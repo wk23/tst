@@ -2352,11 +2352,12 @@ void Spell::EffectHeal( uint32 /*i*/ )
         if(m_CastItem)
             return;
 
-        uint32 procHealer = PROC_FLAG_HEAL;
-        if (crit)
-            procHealer |= PROC_FLAG_CRIT_HEAL;
+        //uint32 procHealer = PROC_FLAG_HEAL;
+        //if (crit)
+            //procHealer |= PROC_FLAG_CRIT_HEAL;
 
-        m_caster->ProcDamageAndSpell(unitTarget,procHealer,PROC_FLAG_HEALED,addhealth,SPELL_SCHOOL_MASK_NONE,m_spellInfo,m_IsTriggeredSpell);
+        //m_caster->ProcDamageAndSpell(unitTarget,procHealer,PROC_FLAG_HEALED,addhealth,SPELL_SCHOOL_MASK_NONE,m_spellInfo,m_IsTriggeredSpell);
+        m_healing+=addhealth;
     }
 }
 
