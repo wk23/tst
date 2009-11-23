@@ -1415,10 +1415,7 @@ void WorldSession::HandleMoveSetCanFlyAckOpcode( WorldPacket & recv_data )
     sLog.outDebug("WORLD: CMSG_MOVE_SET_CAN_FLY_ACK");
     //recv_data.hexlike();
 
-    uint64 guid;                                            // guid - unused
-    if(!recv_data.readPackGUID(guid))
-        return;
-
+    recv_data.read_skip<uint64>();                          // guid
     recv_data.read_skip<uint32>();                          // unk
 
     MovementInfo movementInfo;
