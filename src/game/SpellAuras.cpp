@@ -2736,6 +2736,8 @@ void Aura::HandleAuraTransform(bool apply, bool Real)
             if (m_target->GetTypeId() != TYPEID_PLAYER)
                 return;
 
+            m_target->RemoveSpellsCausingAura(SPELL_AURA_MOD_STEALTH);
+
             switch (GetId())
             {
                 // Orb of Deception
@@ -3013,6 +3015,8 @@ void Aura::HandleModPossess(bool apply, bool Real)
     {
         m_target->SetFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_PLAYER_CONTROLLED);
 
+        m_target->RemoveSpellsCausingAura(SPELL_AURA_MOD_STEALTH);
+
         m_target->SetCharmerGUID(p_caster->GetGUID());
         m_target->setFaction(p_caster->getFaction());
 
@@ -3136,6 +3140,8 @@ void Aura::HandleModCharm(bool apply, bool Real)
 
         m_target->CombatStop();
         m_target->DeleteThreatList();
+
+        m_target->RemoveSpellsCausingAura(SPELL_AURA_MOD_STEALTH);
 
         if(m_target->GetTypeId() == TYPEID_UNIT)
         {
@@ -3290,6 +3296,8 @@ void Aura::HandleAuraModStun(bool apply, bool Real)
 
         m_target->SetFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_STUNNED);
         m_target->CastStop(m_target->GetGUID() == GetCasterGUID() ? GetId() : 0);
+
+        m_target->RemoveSpellsCausingAura(SPELL_AURA_MOD_STEALTH);
 
         // Creature specific
         if(m_target->GetTypeId() != TYPEID_PLAYER)
@@ -3538,7 +3546,9 @@ void Aura::HandleAuraModRoot(bool apply, bool Real)
         m_target->addUnitState(UNIT_STAT_ROOT);
         m_target->SetUInt64Value (UNIT_FIELD_TARGET, 0);
                                                             // probably wrong
-        m_target->SetFlag(UNIT_FIELD_FLAGS,(apply_stat<<16));
+        //m_target->SetFlag(UNIT_FIELD_FLAGS,(apply_stat<<16));
+
+        m_target->RemoveSpellsCausingAura(SPELL_AURA_MOD_STEALTH);
 
         //Save last orientation
         if( m_target->getVictim() )
@@ -4402,6 +4412,7 @@ void Aura::HandleAuraModResistance(bool apply, bool /*Real*/)
         m_spellProto->SpellFamilyName == SPELLFAMILY_DRUID &&
         m_spellProto->SpellFamilyFlags & UI64LIT(0x0000000000000400))
     {
+      m_target->RemoveSpellsCausingAura(SPELL_AURA_MOD_STEALTH);
         m_target->ModifyAuraState(AURA_STATE_FAERIE_FIRE,apply);
     }
 }

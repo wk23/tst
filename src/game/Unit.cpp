@@ -10577,6 +10577,8 @@ void Unit::SetFeared(bool apply, uint64 const& casterGUID, uint32 spellID, uint3
 
         SetFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_FLEEING);
 
+        RemoveSpellsCausingAura(SPELL_AURA_MOD_STEALTH);
+
         GetMotionMaster()->MovementExpired(false);
         CastStop(GetGUID()==casterGUID ? spellID : 0);
 
@@ -10614,6 +10616,8 @@ void Unit::SetConfused(bool apply, uint64 const& casterGUID, uint32 spellID)
     if( apply )
     {
         SetFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_CONFUSED);
+
+        RemoveSpellsCausingAura(SPELL_AURA_MOD_STEALTH);
 
         CastStop(GetGUID()==casterGUID ? spellID : 0);
 
