@@ -650,7 +650,30 @@ uint32 Unit::DealDamage(Unit *pVictim, uint32 damage, CleanDamage const* cleanDa
 
     if (pVictim->GetTypeId() == TYPEID_UNIT && !((Creature*)pVictim)->isPet() && !((Creature*)pVictim)->hasLootRecipient())
         ((Creature*)pVictim)->SetLootRecipient(this);
-    if (health <= damage)
+
+    bool targetdummy=false;
+    if (pVictim->GetTypeId() == TYPEID_UNIT) {
+    uint32 mobId = pVictim->GetEntry();
+    switch(mobId)
+        {
+            case   17578:                //Training Dummy
+            case   25225:                //Practice Dummy
+            targetdummy = true;
+            break;
+        }
+    }
+    if (GetTypeId() == TYPEID_UNIT) {
+    uint32 mobId = GetEntry();
+    switch(mobId)
+        {
+            case   17578:                //Training Dummy
+            case   25225:                //Practice Dummy
+            targetdummy = true;
+            break;
+        }
+    }
+
+    if (health <= damage && !targetdummy)
     {
         DEBUG_LOG("DealDamage: victim just died");
 
@@ -822,6 +845,7 @@ uint32 Unit::DealDamage(Unit *pVictim, uint32 damage, CleanDamage const* cleanDa
     {
         DEBUG_LOG("DealDamageAlive");
 
+        if (!targetdummy)
         pVictim->ModifyHealth(- (int32)damage);
 
         if(damagetype != DOT)
@@ -847,7 +871,7 @@ uint32 Unit::DealDamage(Unit *pVictim, uint32 damage, CleanDamage const* cleanDa
             if (!spellProto || !(spellProto->AuraInterruptFlags&AURA_INTERRUPT_FLAG_DIRECT_DAMAGE))
                 pVictim->RemoveAurasWithInterruptFlags(AURA_INTERRUPT_FLAG_DIRECT_DAMAGE);
         }
-        if (pVictim->GetTypeId() != TYPEID_PLAYER)
+        if (pVictim->GetTypeId() != TYPEID_PLAYER || targetdummy)
         {
             if(spellProto && IsDamageToThreatSpell(spellProto))
                 pVictim->AddThreat(this, damage*2, (cleanDamage && cleanDamage->hitOutCome == MELEE_HIT_CRIT), damageSchoolMask, spellProto);
@@ -973,6 +997,13 @@ uint32 Unit::DealDamage(Unit *pVictim, uint32 damage, CleanDamage const* cleanDa
     }
 
     DEBUG_LOG("DealDamageEnd returned %d damage", damage);
+    if (targetdummy) {
+    pVictim->CombatStop();
+    pVictim->CombatStopWithPets(true);
+    pVictim->getHostileRefManager().deleteReferences();
+    CombatStop();
+    getHostileRefManager().deleteReferences();
+    }
 
     return damage;
 }
