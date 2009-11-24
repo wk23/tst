@@ -377,7 +377,7 @@ void WorldSession::HandleBinderActivateOpcode( WorldPacket & recv_data )
     uint64 npcGUID;
     recv_data >> npcGUID;
 
-    if(!GetPlayer()->IsInWorld() || !GetPlayer()->isAlive())
+    if(!GetPlayer()->isAlive())
         return;
 
     Creature *unit = GetPlayer()->GetNPCIfCanInteractWith(npcGUID,UNIT_NPC_FLAG_INNKEEPER);
@@ -397,7 +397,7 @@ void WorldSession::HandleBinderActivateOpcode( WorldPacket & recv_data )
 void WorldSession::SendBindPoint(Creature *npc)
 {
     // prevent set homebind to instances in any case
-    if(GetPlayer()->GetMap()->Instanceable())
+    if(sMapStore.LookupEntry(GetPlayer()->GetMapId())->Instanceable())
         return;
 
     uint32 bindspell = 3286;

@@ -99,16 +99,10 @@ class MANGOS_DLL_DECL ObjectAccessor : public MaNGOS::Singleton<ObjectAccessor, 
                 return NULL;
 
             if (IS_PLAYER_GUID(guid))
-            {
-                Unit * u = (Unit*)HashMapHolder<Player>::Find(guid);
-                if(!u || !u->IsInWorld())
-                    return NULL;
+                return (Unit*)HashMapHolder<Player>::Find(guid);
 
+            if (Unit* u = (Unit*)HashMapHolder<Pet>::Find(guid))
                 return u;
-            }
-
-            if (IS_PET_GUID(guid))
-                return (Unit*)HashMapHolder<Pet>::Find(guid);
 
             return (Unit*)HashMapHolder<Creature>::Find(guid);
         }
