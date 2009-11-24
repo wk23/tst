@@ -36,6 +36,7 @@
 #include "BattleGround.h"
 #include "BattleGroundAV.h"
 #include "Util.h"
+#include "OutdoorPvPMgr.h"
 
 GameObject::GameObject() : WorldObject()
 {
@@ -101,7 +102,7 @@ void GameObject::RemoveFromWorld()
     Object::RemoveFromWorld();
 }
 
-bool GameObject::Create(uint32 guidlow, uint32 name_id, Map *map, float x, float y, float z, float ang, float rotation0, float rotation1, float rotation2, float rotation3, uint32 animprogress, GOState go_state)
+bool GameObject::Create(uint32 guidlow, uint32 name_id, Map *map, float x, float y, float z, float ang, float rotation0, float rotation1, float rotation2, float rotation3, uint32 animprogress, GOState go_state, uint32 ArtKit)
 {
     Relocate(x,y,z,ang);
     SetMapId(map->GetId());
@@ -152,6 +153,8 @@ bool GameObject::Create(uint32 guidlow, uint32 name_id, Map *map, float x, float
     SetGoType(GameobjectTypes(goinfo->type));
 
     SetGoAnimProgress(animprogress);
+
+    SetUInt32Value (GAMEOBJECT_ARTKIT, ArtKit);
 
     // Spell charges for GAMEOBJECT_TYPE_SPELLCASTER (22)
     if (goinfo->type == GAMEOBJECT_TYPE_SPELLCASTER)
@@ -532,6 +535,7 @@ void GameObject::SaveToDB(uint32 mapid, uint8 spawnMask)
     data.animprogress = GetGoAnimProgress();
     data.go_state = GetGoState();
     data.spawnMask = spawnMask;
+    data.ArtKit = GetUInt32Value (GAMEOBJECT_ARTKIT);
 
     // updated in DB
     std::ostringstream ss;
@@ -582,11 +586,12 @@ bool GameObject::LoadFromDB(uint32 guid, Map *map)
 
     uint32 animprogress = data->animprogress;
     GOState go_state = data->go_state;
+    uint32 ArtKit = data->ArtKit;
 
     m_DBTableGuid = guid;
     if (map->GetInstanceId() != 0) guid = sObjectMgr.GenerateLowGuid(HIGHGUID_GAMEOBJECT);
 
-    if (!Create(guid,entry, map, x, y, z, ang, rotation0, rotation1, rotation2, rotation3, animprogress, go_state) )
+    if (!Create(guid,entry, map, x, y, z, ang, rotation0, rotation1, rotation2, rotation3, animprogress, go_state, ArtKit) )
         return false;
 
     if (!GetGOInfo()->GetDespawnPossibility() && !GetGOInfo()->IsDespawnAtAction() && data->spawntimesecs >= 0)
@@ -834,6 +839,14 @@ void GameObject::UseDoorOrButton(uint32 time_to_restore, bool alternative /* = f
     m_cooldownTime = time(NULL) + time_to_restore;
 }
 
+void GameObject::SetGoArtKit(uint32 kit)
+{
+    SetUInt32Value(GAMEOBJECT_ARTKIT, kit);
+    GameObjectData *data = const_cast<GameObjectData*>(sObjectMgr.GetGOData(m_DBTableGuid));
+    if(data)
+        data->ArtKit = kit;
+}
+
 void GameObject::SwitchDoorOrButton(bool activate, bool alternative /* = false */)
 {
     if(activate)
@@ -841,9 +854,9 @@ void GameObject::SwitchDoorOrButton(bool activate, bool alternative /* = false *
     else
         RemoveFlag(GAMEOBJECT_FLAGS, GO_FLAG_IN_USE);
 
-    if(GetGoState() == GO_STATE_READY)                      //if closed -> open
+    if(GetGoState() == GO_STATE_READY) //if closed -> open
         SetGoState(alternative ? GO_STATE_ACTIVE_ALTERNATIVE : GO_STATE_ACTIVE);
-    else                                                    //if open -> close
+    else //if open -> close
         SetGoState(GO_STATE_READY);
 }
 
@@ -1243,7 +1256,10 @@ void GameObject::Use(Unit* user)
     SpellEntry const *spellInfo = sSpellStore.LookupEntry( spellId );
     if(!spellInfo)
     {
-        sLog.outError("WORLD: unknown spell id %u at use action for gameobject (Entry: %u GoType: %u )", spellId,GetEntry(),GetGoType());
+        if(user->GetTypeId()!=TYPEID_PLAYER || !sOutdoorPvPMgr.HandleCustomSpell((Player*)user,spellId,this))
+            sLog.outError("WORLD: unknown spell id %u at use action for gameobject (Entry: %u GoType: %u )", spellId,GetEntry(),GetGoType());
+        else
+            sLog.outDebug("WORLD: %u non-dbc spell was handled by OutdoorPvP", spellId);
         return;
     }
 

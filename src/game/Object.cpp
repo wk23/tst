@@ -525,6 +525,8 @@ void Object::BuildValuesUpdate(uint8 updatetype, ByteBuffer * data, UpdateMask *
                 IsActivateToQuest = true;
                 updateMask->SetBit(GAMEOBJECT_DYN_FLAGS);
             }
+            if (GetUInt32Value(GAMEOBJECT_ARTKIT))
+                updateMask->SetBit(GAMEOBJECT_ARTKIT);
         }
         else if (isType(TYPEMASK_UNIT))
         {
@@ -570,7 +572,7 @@ void Object::BuildValuesUpdate(uint8 updatetype, ByteBuffer * data, UpdateMask *
             {
                 // remove custom flag before send
                 if( index == UNIT_NPC_FLAGS )
-                    *data << uint32(m_uint32Values[ index ] & ~UNIT_NPC_FLAG_GUARD);
+                    *data << uint32(m_uint32Values[ index ] & ~(UNIT_NPC_FLAG_GUARD + UNIT_NPC_FLAG_OUTDOORPVP));
                 else if (index == UNIT_FIELD_AURASTATE)
                 {
                     if(IsPerCasterAuraState)
