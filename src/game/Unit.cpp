@@ -516,7 +516,7 @@ uint32 Unit::DealDamage(Unit *pVictim, uint32 damage, CleanDamage const* cleanDa
     }
 
     if(GetTypeId() == TYPEID_PLAYER && pVictim->GetTypeId() == TYPEID_PLAYER)
-    if ((IsFriendlyTo(pVictim) || pVictim->IsFriendlyTo(this)) && !((Player*)this)->isGameMaster() && !((Player*)pVictim)->duel)
+    if ((this !=pVictim) && (IsFriendlyTo(pVictim) || pVictim->IsFriendlyTo(this)) && !((Player*)this)->isGameMaster() && !((Player*)pVictim)->duel)
     {
         sLog.outError("Player (aGUID: %u) attack (vGUID: %u) at map %u, possible cheat faction change", GetGUID(), pVictim->GetGUID(), GetMapId());
         return 0;
