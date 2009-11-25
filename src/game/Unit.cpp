@@ -652,6 +652,8 @@ uint32 Unit::DealDamage(Unit *pVictim, uint32 damage, CleanDamage const* cleanDa
     if (pVictim->GetTypeId() == TYPEID_UNIT && !((Creature*)pVictim)->isPet() && !((Creature*)pVictim)->hasLootRecipient())
         ((Creature*)pVictim)->SetLootRecipient(this);
 
+    bool targetdummyA=false;
+    bool targetdummyV=false;
     bool targetdummy=false;
     if (pVictim->GetTypeId() == TYPEID_UNIT) {
     uint32 mobId = pVictim->GetEntry();
@@ -659,7 +661,7 @@ uint32 Unit::DealDamage(Unit *pVictim, uint32 damage, CleanDamage const* cleanDa
         {
             case   17578:                //Training Dummy
             case   25225:                //Practice Dummy
-            targetdummy = true;
+            targetdummyV = true;
             break;
         }
     }
@@ -669,12 +671,12 @@ uint32 Unit::DealDamage(Unit *pVictim, uint32 damage, CleanDamage const* cleanDa
         {
             case   17578:                //Training Dummy
             case   25225:                //Practice Dummy
-            targetdummy = true;
+            targetdummyA = true;
             break;
         }
     }
-
-    if (health <= damage && !targetdummy)
+    targetdummy = (targetdummyA || targetdummyV);
+    if (health <= damage)
     {
         DEBUG_LOG("DealDamage: victim just died");
 
@@ -890,9 +892,9 @@ uint32 Unit::DealDamage(Unit *pVictim, uint32 damage, CleanDamage const* cleanDa
             if (!spellProto || !(spellProto->AuraInterruptFlags&AURA_INTERRUPT_FLAG_DIRECT_DAMAGE))
                 pVictim->RemoveAurasWithInterruptFlags(AURA_INTERRUPT_FLAG_DIRECT_DAMAGE);
         }
-        if (pVictim->GetTypeId() != TYPEID_PLAYER || targetdummy)
+        if (pVictim->GetTypeId() != TYPEID_PLAYER)
         {
-            if(spellProto && IsDamageToThreatSpell(spellProto))
+            if(spellProto && IsDamageToThreatSpell(spellProto) && !targetdummy)
                 pVictim->AddThreat(this, damage*2, (cleanDamage && cleanDamage->hitOutCome == MELEE_HIT_CRIT), damageSchoolMask, spellProto);
             else
                 pVictim->AddThreat(this, damage, (cleanDamage && cleanDamage->hitOutCome == MELEE_HIT_CRIT), damageSchoolMask, spellProto);
@@ -1016,7 +1018,7 @@ uint32 Unit::DealDamage(Unit *pVictim, uint32 damage, CleanDamage const* cleanDa
     }
 
     DEBUG_LOG("DealDamageEnd returned %d damage", damage);
-    if (targetdummy) {
+    if (targetdummyV) {
     pVictim->CombatStop();
     pVictim->CombatStopWithPets(true);
     pVictim->getHostileRefManager().deleteReferences();
