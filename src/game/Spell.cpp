@@ -432,6 +432,7 @@ void Spell::FillTargetMap()
 
         // targets for TARGET_SCRIPT_COORDINATES (A) and TARGET_SCRIPT  filled in Spell::CheckCast call
         if( m_spellInfo->EffectImplicitTargetA[i] == TARGET_SCRIPT_COORDINATES ||
+            m_spellInfo->Id ==33655 || 
             m_spellInfo->EffectImplicitTargetA[i] == TARGET_SCRIPT ||
             m_spellInfo->EffectImplicitTargetB[i] == TARGET_SCRIPT && m_spellInfo->EffectImplicitTargetA[i] != TARGET_SELF )
             continue;
@@ -1344,6 +1345,14 @@ void Spell::SetTargetMap(uint32 effIndex,uint32 targetMode,UnitList& TagUnitMap)
     }
 
     uint32 unMaxTargets = m_spellInfo->MaxAffectedTargets;
+
+    if (m_spellInfo->Id == 33655)
+        {
+            if(m_targets.getUnitTarget())
+                TagUnitMap.push_back(m_targets.getUnitTarget());
+            if(m_targets.getItemTarget())
+                AddItemTarget(m_targets.getItemTarget(), effIndex);
+        }
 
     switch(targetMode)
     {
@@ -3431,7 +3440,7 @@ void Spell::HandleEffects(Unit *pUnitTarget,Item *pItemTarget,GameObject *pGOTar
 
     damage = int32(CalculateDamage((uint8)i, unitTarget) * DamageMultiplier);
 
-    sLog.outDebug( "Spell: Effect : %u", eff);
+    sLog.outDebug( "Spell %u Effect%d : %u", m_spellInfo->Id, i, eff);
 
     //Simply return. Do not display "immune" in red text on client
     if(unitTarget && unitTarget->IsImmunedToSpellEffect(m_spellInfo, i))
@@ -3695,6 +3704,7 @@ SpellCastResult Spell::CheckCast(bool strict)
         for(uint8 j = 0; j < 3; ++j)
         {
             if( m_spellInfo->EffectImplicitTargetA[j] == TARGET_SCRIPT ||
+                m_spellInfo->Id == 33655 ||
                 m_spellInfo->EffectImplicitTargetB[j] == TARGET_SCRIPT && m_spellInfo->EffectImplicitTargetA[j] != TARGET_SELF ||
                 m_spellInfo->EffectImplicitTargetA[j] == TARGET_SCRIPT_COORDINATES ||
                 m_spellInfo->EffectImplicitTargetB[j] == TARGET_SCRIPT_COORDINATES )
@@ -5253,6 +5263,7 @@ bool Spell::CheckTarget( Unit* target, uint32 eff )
         // in case TARGET_SCRIPT target selected by server always and can't be cheated
         if( target->HasFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_NOT_SELECTABLE) &&
             m_spellInfo->EffectImplicitTargetA[eff] != TARGET_SCRIPT &&
+            m_spellInfo->Id != 33655 &&
             m_spellInfo->EffectImplicitTargetB[eff] != TARGET_SCRIPT )
             return false;
     }

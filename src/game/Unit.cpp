@@ -1204,6 +1204,15 @@ void Unit::CalculateSpellDamage(SpellNonMeleeDamage *damageInfo, int32 damage, S
             }
             if (crit)
             {
+            ModifyAuraState(AURA_STATE_CRIT, true);
+            StartReactiveTimer( REACTIVE_CRIT );
+
+            if(getClass()==CLASS_HUNTER)
+            {
+                ModifyAuraState(AURA_STATE_HUNTER_CRIT_STRIKE, true);
+                StartReactiveTimer( REACTIVE_HUNTER_CRIT );
+            }
+
                 damageInfo->HitInfo|= SPELL_HIT_TYPE_CRIT;
 
                 // Calculate crit bonus
@@ -1230,6 +1239,9 @@ void Unit::CalculateSpellDamage(SpellNonMeleeDamage *damageInfo, int32 damage, S
 
                 // Resilience - reduce crit damage
                 if (pVictim->GetTypeId()==TYPEID_PLAYER)
+                if(attackType == RANGED_ATTACK)
+                    damage -= ((Player*)pVictim)->GetRangedCritDamageReduction(damage);
+                else
                     damage -= ((Player*)pVictim)->GetMeleeCritDamageReduction(damage);
             }
             // Spell weapon based damage CAN BE crit & blocked at same time
@@ -1270,6 +1282,23 @@ void Unit::CalculateSpellDamage(SpellNonMeleeDamage *damageInfo, int32 damage, S
     else
         damage = 0;
     damageInfo->damage = damage;
+
+    // victim's damage shield
+    // yet another hack to fix crashes related to the aura getting removed during iteration
+    std::set<Aura*> alreadyDone;
+    AuraList const& vDamageShields = pVictim->GetAurasByType(SPELL_AURA_DAMAGE_SHIELD);
+    for(AuraList::const_iterator i = vDamageShields.begin(), next = vDamageShields.begin(); i != vDamageShields.end();)
+    {
+        if (alreadyDone.find(*i) == alreadyDone.end())
+        {
+            alreadyDone.insert(*i);
+            pVictim->SpellNonMeleeDamageLog(this, (*i)->GetId(), (*i)->GetModifier()->m_amount);
+            i = vDamageShields.begin();
+        }
+        else
+            ++i;
+    }
+
 }
 
 void Unit::DealSpellDamage(SpellNonMeleeDamage *damageInfo, bool durabilityLoss)
@@ -1414,6 +1443,10 @@ void Unit::CalculateMeleeDamage(Unit *pVictim, uint32 damage, CalcDamageInfo *da
             damageInfo->procEx|=PROC_EX_MISS;
             damageInfo->damage = 0;
             damageInfo->cleanDamage = 0;
+
+            if(GetTypeId()== TYPEID_PLAYER)
+                ((Player*)this)->UpdateWeaponSkill(damageInfo->attackType);
+
             break;
         }
         case MELEE_HIT_NORMAL:
@@ -1421,8 +1454,9 @@ void Unit::CalculateMeleeDamage(Unit *pVictim, uint32 damage, CalcDamageInfo *da
             damageInfo->procEx|=PROC_EX_NORMAL_HIT;
             break;
         case MELEE_HIT_CRIT:
+        case MELEE_HIT_BLOCK_CRIT:
         {
-            damageInfo->HitInfo     |= HITINFO_CRITICALHIT;
+            damageInfo->HitInfo     |= HITINFO_CRITICALHIT | HITINFO_NORMALSWING2 | 0x8;
             damageInfo->TargetState  = VICTIMSTATE_NORMAL;
 
             damageInfo->procEx|=PROC_EX_CRITICAL_HIT;
@@ -1446,12 +1480,62 @@ void Unit::CalculateMeleeDamage(Unit *pVictim, uint32 damage, CalcDamageInfo *da
                 damageInfo->damage = int32((damageInfo->damage) * float((100.0f + mod)/100.0f));
 
             // Resilience - reduce crit damage
+            uint32 resilienceReduction = 0;
+
             if (pVictim->GetTypeId()==TYPEID_PLAYER)
             {
-                uint32 resilienceReduction = ((Player*)pVictim)->GetMeleeCritDamageReduction(damageInfo->damage);
+                if(damageInfo->attackType == RANGED_ATTACK)
+                    resilienceReduction = ((Player*)pVictim)->GetRangedCritDamageReduction(damageInfo->damage);
+                else
+                    resilienceReduction = ((Player*)pVictim)->GetMeleeCritDamageReduction(damageInfo->damage);
                 damageInfo->damage      -= resilienceReduction;
                 damageInfo->cleanDamage += resilienceReduction;
             }
+
+            if(GetTypeId() == TYPEID_PLAYER && pVictim->GetTypeId() != TYPEID_PLAYER && pVictim->GetCreatureType() != CREATURE_TYPE_CRITTER )
+                ((Player*)this)->UpdateWeaponSkill(damageInfo->attackType);
+
+            ModifyAuraState(AURA_STATE_CRIT, true);
+            StartReactiveTimer( REACTIVE_CRIT );
+
+            if(getClass()==CLASS_HUNTER)
+            {
+                ModifyAuraState(AURA_STATE_HUNTER_CRIT_STRIKE, true);
+                StartReactiveTimer( REACTIVE_HUNTER_CRIT );
+            }
+
+            if ( damageInfo->hitOutCome == MELEE_HIT_BLOCK_CRIT )
+            {
+                damageInfo->blocked_amount = pVictim->GetShieldBlockValue();
+
+                if (pVictim->GetUnitBlockChance())
+                    pVictim->HandleEmoteCommand(EMOTE_ONESHOT_PARRYSHIELD);
+                else
+                    pVictim->HandleEmoteCommand(EMOTE_ONESHOT_PARRYUNARMED);
+
+                //Only set VICTIMSTATE_BLOCK on a full block
+                if (damageInfo->blocked_amount >= damageInfo->damage)
+                {
+                    damageInfo->TargetState = VICTIMSTATE_BLOCKS;
+                    damageInfo->blocked_amount = damageInfo->damage;
+                }
+
+                if(pVictim->GetTypeId() == TYPEID_PLAYER)
+                {
+                    // Update defense
+                    ((Player*)pVictim)->UpdateDefense();
+
+                    // random durability for main hand weapon (BLOCK)
+                    if (roll_chance_f(sWorld.getRate(RATE_DURABILITY_LOSS_BLOCK)))
+                        ((Player*)pVictim)->DurabilityPointLossForEquipSlot(EQUIPMENT_SLOT_OFFHAND);
+                }
+
+                pVictim->ModifyAuraState(AURA_STATE_DEFENSE,true);
+                pVictim->StartReactiveTimer( REACTIVE_DEFENSE );
+                break;
+            }
+
+            pVictim->HandleEmoteCommand(EMOTE_ONESHOT_WOUNDCRITICAL);
             break;
         }
         case MELEE_HIT_PARRY:
@@ -1459,6 +1543,73 @@ void Unit::CalculateMeleeDamage(Unit *pVictim, uint32 damage, CalcDamageInfo *da
             damageInfo->procEx|=PROC_EX_PARRY;
             damageInfo->cleanDamage += damageInfo->damage;
             damageInfo->damage = 0;
+
+            // instant (maybe with small delay) counter attack
+            {
+                float offtime  = float(pVictim->getAttackTimer(OFF_ATTACK));
+                float basetime = float(pVictim->getAttackTimer(BASE_ATTACK));
+
+                // after parry nearest next attack time will reduced at %40 from full attack time.
+                // The delay cannot be reduced to less than 20% of your weapon base swing delay.
+                if (pVictim->haveOffhandWeapon() && offtime < basetime)
+                {
+                    float percent20 = pVictim->GetAttackTime(OFF_ATTACK)*0.20;
+                    float percent60 = 3*percent20;
+                    // set to 20% if in range 20%...20+40% of full time
+                    if(offtime > percent20 && offtime <= percent60)
+                    {
+                        pVictim->setAttackTimer(OFF_ATTACK,uint32(percent20));
+                    }
+                    // decrease at %40 from full time
+                    else if(offtime > percent60)
+                    {
+                        offtime -= 2*percent20;
+                        pVictim->setAttackTimer(OFF_ATTACK,uint32(offtime));
+                    }
+                    // ELSE not changed
+                }
+                else
+                {
+                    float percent20 = pVictim->GetAttackTime(BASE_ATTACK)*0.20;
+                    float percent60 = 3*percent20;
+                    // set to 20% if in range 20%...20+40% of full time
+                    if(basetime > percent20 && basetime <= percent60)
+                    {
+                        pVictim->setAttackTimer(BASE_ATTACK,uint32(percent20));
+                    }
+                    // decrease at %40 from full time
+                    else if(basetime > percent60)
+                    {
+                        basetime -= 2*percent20;
+                        pVictim->setAttackTimer(BASE_ATTACK,uint32(basetime));
+                    }
+                    // ELSE not changed
+                }
+            }
+
+            if(pVictim->GetTypeId() == TYPEID_PLAYER)
+            {
+                // Update victim defense ?
+                ((Player*)pVictim)->UpdateDefense();
+
+                // random durability for main hand weapon (PARRY)
+                if (roll_chance_f(sWorld.getRate(RATE_DURABILITY_LOSS_PARRY)))
+                    ((Player*)pVictim)->DurabilityPointLossForEquipSlot(EQUIPMENT_SLOT_MAINHAND);
+            }
+
+            pVictim->HandleEmoteCommand(EMOTE_ONESHOT_PARRYUNARMED);
+
+            if (pVictim->getClass() == CLASS_HUNTER)
+            {
+                pVictim->ModifyAuraState(AURA_STATE_HUNTER_PARRY,true);
+                pVictim->StartReactiveTimer( REACTIVE_HUNTER_PARRY );
+            }
+            else
+            {
+                pVictim->ModifyAuraState(AURA_STATE_DEFENSE, true);
+                pVictim->StartReactiveTimer( REACTIVE_DEFENSE );
+            }
+
             break;
 
         case MELEE_HIT_DODGE:
@@ -1466,12 +1617,37 @@ void Unit::CalculateMeleeDamage(Unit *pVictim, uint32 damage, CalcDamageInfo *da
             damageInfo->procEx|=PROC_EX_DODGE;
             damageInfo->cleanDamage += damageInfo->damage;
             damageInfo->damage = 0;
+
+            if(pVictim->GetTypeId() == TYPEID_PLAYER)
+                ((Player*)pVictim)->UpdateDefense();
+
+            pVictim->HandleEmoteCommand(EMOTE_ONESHOT_PARRYUNARMED);
+
+            if (pVictim->getClass() != CLASS_ROGUE)         // Riposte
+            {
+                pVictim->ModifyAuraState(AURA_STATE_DEFENSE, true);
+                pVictim->StartReactiveTimer( REACTIVE_DEFENSE );
+            }
+
+            // Overpower
+            if (GetTypeId() == TYPEID_PLAYER && getClass() == CLASS_WARRIOR)
+            {
+                ((Player*)this)->AddComboPoints(pVictim, 1);
+                StartReactiveTimer( REACTIVE_OVERPOWER );
+            }
+
             break;
         case MELEE_HIT_BLOCK:
         {
             damageInfo->TargetState = VICTIMSTATE_NORMAL;
             damageInfo->procEx|=PROC_EX_BLOCK;
             damageInfo->blocked_amount = damageInfo->target->GetShieldBlockValue();
+
+            if (pVictim->GetUnitBlockChance())
+                pVictim->HandleEmoteCommand(EMOTE_ONESHOT_PARRYSHIELD);
+            else
+                pVictim->HandleEmoteCommand(EMOTE_ONESHOT_PARRYUNARMED);
+
             if (damageInfo->blocked_amount >= damageInfo->damage)
             {
                 damageInfo->TargetState = VICTIMSTATE_BLOCKS;
@@ -1479,6 +1655,20 @@ void Unit::CalculateMeleeDamage(Unit *pVictim, uint32 damage, CalcDamageInfo *da
             }
             damageInfo->damage      -= damageInfo->blocked_amount;
             damageInfo->cleanDamage += damageInfo->blocked_amount;
+
+            if(pVictim->GetTypeId() == TYPEID_PLAYER)
+            {
+                // Update defense
+                ((Player*)pVictim)->UpdateDefense();
+
+                // random durability for main hand weapon (BLOCK)
+                if (roll_chance_f(sWorld.getRate(RATE_DURABILITY_LOSS_BLOCK)))
+                    ((Player*)pVictim)->DurabilityPointLossForEquipSlot(EQUIPMENT_SLOT_OFFHAND);
+            }
+
+            pVictim->ModifyAuraState(AURA_STATE_DEFENSE,true);
+            pVictim->StartReactiveTimer( REACTIVE_DEFENSE );
+
             break;
         }
         case MELEE_HIT_GLANCING:
@@ -1531,8 +1721,8 @@ void Unit::CalculateMeleeDamage(Unit *pVictim, uint32 damage, CalcDamageInfo *da
 
             reducePercent = lowEnd + rand_norm() * ( highEnd - lowEnd );
 
-            damageInfo->cleanDamage += damageInfo->damage-uint32(reducePercent *  damageInfo->damage);
             damageInfo->damage   = uint32(reducePercent *  damageInfo->damage);
+            damageInfo->cleanDamage += damageInfo->damage;
             break;
         }
         case MELEE_HIT_CRUSHING:
@@ -1542,6 +1732,7 @@ void Unit::CalculateMeleeDamage(Unit *pVictim, uint32 damage, CalcDamageInfo *da
             damageInfo->procEx|=PROC_EX_NORMAL_HIT;
             // 150% normal damage
             damageInfo->damage += (damageInfo->damage / 2);
+            damageInfo->cleanDamage = damageInfo->damage;
             break;
         }
         default:
@@ -1567,6 +1758,23 @@ void Unit::CalculateMeleeDamage(Unit *pVictim, uint32 damage, CalcDamageInfo *da
     }
     else // Umpossible get negative result but....
         damageInfo->damage = 0;
+
+    damage = damageInfo->damage;
+    // victim's damage shield
+    // yet another hack to fix crashes related to the aura getting removed during iteration
+    std::set<Aura*> alreadyDone;
+    AuraList const& vDamageShields = pVictim->GetAurasByType(SPELL_AURA_DAMAGE_SHIELD);
+    for(AuraList::const_iterator i = vDamageShields.begin(), next = vDamageShields.begin(); i != vDamageShields.end();)
+    {
+        if (alreadyDone.find(*i) == alreadyDone.end())
+        {
+            alreadyDone.insert(*i);
+            pVictim->SpellNonMeleeDamageLog(this, (*i)->GetId(), (*i)->GetModifier()->m_amount);
+            i = vDamageShields.begin();
+        }
+        else
+            ++i;
+    }
 }
 
 void Unit::DealMeleeDamage(CalcDamageInfo *damageInfo, bool durabilityLoss)
@@ -1589,47 +1797,10 @@ void Unit::DealMeleeDamage(CalcDamageInfo *damageInfo, bool durabilityLoss)
             return;
     }
 
-    // Hmmmm dont like this emotes client must by self do all animations
-    if (damageInfo->HitInfo&HITINFO_CRITICALHIT)
-        pVictim->HandleEmoteCommand(EMOTE_ONESHOT_WOUNDCRITICAL);
-    if(damageInfo->blocked_amount && damageInfo->TargetState!=VICTIMSTATE_BLOCKS)
-        pVictim->HandleEmoteCommand(EMOTE_ONESHOT_PARRYSHIELD);
+    MeleeHitOutcome outcome = damageInfo->hitOutCome;
 
-    if(damageInfo->TargetState == VICTIMSTATE_PARRY)
-    {
-        // Get attack timers
-        float offtime  = float(pVictim->getAttackTimer(OFF_ATTACK));
-        float basetime = float(pVictim->getAttackTimer(BASE_ATTACK));
-        // Reduce attack time
-        if (pVictim->haveOffhandWeapon() && offtime < basetime)
-        {
-            float percent20 = pVictim->GetAttackTime(OFF_ATTACK) * 0.20f;
-            float percent60 = 3.0f * percent20;
-            if(offtime > percent20 && offtime <= percent60)
-            {
-                pVictim->setAttackTimer(OFF_ATTACK, uint32(percent20));
-            }
-            else if(offtime > percent60)
-            {
-                offtime -= 2.0f * percent20;
-                pVictim->setAttackTimer(OFF_ATTACK, uint32(offtime));
-            }
-        }
-        else
-        {
-            float percent20 = pVictim->GetAttackTime(BASE_ATTACK) * 0.20;
-            float percent60 = 3.0f * percent20;
-            if(basetime > percent20 && basetime <= percent60)
-            {
-                pVictim->setAttackTimer(BASE_ATTACK, uint32(percent20));
-            }
-            else if(basetime > percent60)
-            {
-                basetime -= 2.0f * percent20;
-                pVictim->setAttackTimer(BASE_ATTACK, uint32(basetime));
-            }
-        }
-    }
+    if(outcome == MELEE_HIT_MISS ||outcome == MELEE_HIT_DODGE ||outcome == MELEE_HIT_BLOCK ||outcome == MELEE_HIT_PARRY)
+        pVictim->AddThreat(this);
 
     // Call default DealDamage
     CleanDamage cleanDamage(damageInfo->cleanDamage,damageInfo->attackType,damageInfo->hitOutCome);
@@ -1680,7 +1851,22 @@ void Unit::DealMeleeDamage(CalcDamageInfo *damageInfo, bool durabilityLoss)
         // on weapon hit casts
         if(GetTypeId() == TYPEID_PLAYER && pVictim->isAlive())
             ((Player*)this)->CastItemCombatSpell(pVictim, damageInfo->attackType);
-
+    // victim's damage shield
+    // yet another hack to fix crashes related to the aura getting removed during iteration
+    std::set<Aura*> alreadyDone;
+    AuraList const& vDamageShields = pVictim->GetAurasByType(SPELL_AURA_DAMAGE_SHIELD);
+    for(AuraList::const_iterator i = vDamageShields.begin(), next = vDamageShields.begin(); i != vDamageShields.end();)
+    {
+        if (alreadyDone.find(*i) == alreadyDone.end())
+        {
+            alreadyDone.insert(*i);
+            pVictim->SpellNonMeleeDamageLog(this, (*i)->GetId(), (*i)->GetModifier()->m_amount);
+            i = vDamageShields.begin();
+        }
+        else
+            ++i;
+    }
+/*
         // victim's damage shield
         std::set<Aura*> alreadyDone;
         //uint32 removedAuras = pVictim->m_removedAuras;
@@ -1714,13 +1900,9 @@ void Unit::DealMeleeDamage(CalcDamageInfo *damageInfo, bool durabilityLoss)
 
                pVictim->DealDamage(this, damage, 0, SPELL_DIRECT_DAMAGE, GetSpellSchoolMask(spellProto), spellProto, true);
 
-               //if (pVictim->m_removedAuras > removedAuras)
-               //{
-                   //removedAuras = pVictim->m_removedAuras;
-                   //next = vDamageShields.begin();
-               //}
            }
         }
+*/
      }
  }
 
@@ -1804,6 +1986,7 @@ void Unit::CalcAbsorbResist(Unit *pVictim,SpellSchoolMask schoolMask, DamageEffe
     // absorb without mana cost
     int32 reflectDamage = 0;
     Aura* reflectAura = NULL;
+    bool refl_shield=false;
     AuraList const& vSchoolAbsorb = pVictim->GetAurasByType(SPELL_AURA_SCHOOL_ABSORB);
     for(AuraList::const_iterator i = vSchoolAbsorb.begin(), next; i != vSchoolAbsorb.end() && RemainingDamage > 0; i = next)
     {
@@ -1825,9 +2008,10 @@ void Unit::CalcAbsorbResist(Unit *pVictim,SpellSchoolMask schoolMask, DamageEffe
 
         int32 currentAbsorb;
 
-        //Reflective Shield
-        if (canReflect && (pVictim != this) && (*i)->GetSpellProto()->SpellFamilyName == SPELLFAMILY_PRIEST && (*i)->GetSpellProto()->SpellFamilyFlags == 0x1)
+        //Reflective Shield reflect ALL types of damage
+        if (/*canReflect &&*/ (pVictim != this) && (*i)->GetSpellProto()->SpellFamilyName == SPELLFAMILY_PRIEST && (*i)->GetSpellProto()->SpellFamilyFlags == 0x1)
         {
+        refl_shield=true;
             if(Unit* caster = (*i)->GetCaster())
             {
                 AuraList const& vOverRideCS = caster->GetAurasByType(SPELL_AURA_OVERRIDE_CLASS_SCRIPTS);
@@ -1872,7 +2056,7 @@ void Unit::CalcAbsorbResist(Unit *pVictim,SpellSchoolMask schoolMask, DamageEffe
         RemainingDamage -= currentAbsorb;
     }
     // do not cast spells while looping auras; auras can get invalid otherwise
-    if (canReflect && reflectDamage)
+    if ((canReflect || refl_shield)&& reflectDamage)
         pVictim->CastCustomSpell(this, 33619, &reflectDamage, NULL, NULL, true, NULL, reflectAura);
 
     // absorb by mana cost
@@ -3737,34 +3921,43 @@ void Unit::RemoveAurasByCasterSpell(uint32 spellId, uint64 casterGUID)
     }
 }
 
-void Unit::RemoveAurasDueToSpellByDispel(uint32 spellId, uint64 casterGUID, Unit *dispeler)
+void Unit::RemoveAurasByCasterSpell(uint32 spellId, uint32 effindex, uint64 casterGUID)
 {
-    for (AuraMap::iterator iter = m_Auras.begin(); iter != m_Auras.end(); )
+    spellEffectPair spair = spellEffectPair(spellId, effindex);
+    for(AuraMap::iterator iter = m_Auras.lower_bound(spair); iter != m_Auras.upper_bound(spair);)
     {
         Aura *aur = iter->second;
         if (aur->GetId() == spellId && aur->GetCasterGUID() == casterGUID)
         {
-            // Custom dispel case
-            // Unstable Affliction
-            if (aur->GetSpellProto()->SpellFamilyName == SPELLFAMILY_WARLOCK && (aur->GetSpellProto()->SpellFamilyFlags & UI64LIT(0x010000000000)))
-            {
-                int32 damage = aur->GetModifier()->m_amount*9;
-                uint64 caster_guid = aur->GetCasterGUID();
-
-                // Remove aura
-                RemoveAura(iter, AURA_REMOVE_BY_DISPEL);
-
-                // backfire damage and silence
-                dispeler->CastCustomSpell(dispeler, 31117, &damage, NULL, NULL, true, NULL, NULL,caster_guid);
-
-                iter = m_Auras.begin();                     // iterator can be invalidate at cast if self-dispel
-            }
-            else
-                RemoveAura(iter, AURA_REMOVE_BY_DISPEL);
+            RemoveAura(iter);
+            iter = m_Auras.lower_bound(spair);
         }
         else
             ++iter;
     }
+}
+
+void Unit::RemoveSingleAuraDueToSpellByDispel(uint32 spellId, uint64 casterGUID, Unit *dispeler)
+{
+    SpellEntry const* spellEntry = sSpellStore.LookupEntry(spellId);
+
+    // Custom dispel case
+    // Unstable Affliction
+    if(spellEntry->SpellFamilyName == SPELLFAMILY_WARLOCK && (spellEntry->SpellFamilyFlags & UI64LIT(0x010000000000)))
+    {
+        if (Aura* dotAura = GetAura(SPELL_AURA_PERIODIC_DAMAGE,SPELLFAMILY_WARLOCK,UI64LIT(0x010000000000),casterGUID))
+        {
+            int32 damage = dotAura->GetModifier()->m_amount*9;
+
+            // Remove spell auras from stack
+            RemoveSingleSpellAurasByCasterSpell(spellId, casterGUID, AURA_REMOVE_BY_DISPEL);
+
+            // backfire damage and silence
+            dispeler->CastCustomSpell(dispeler, 31117, &damage, NULL, NULL, true, NULL, NULL,casterGUID);
+        }
+    }
+    else
+        RemoveSingleSpellAurasByCasterSpell(spellId, casterGUID, AURA_REMOVE_BY_DISPEL);
 }
 
 void Unit::RemoveAurasDueToSpellBySteal(uint32 spellId, uint64 casterGUID, Unit *stealer)
@@ -3834,7 +4027,7 @@ void Unit::RemoveAurasWithDispelType( DispelType type )
     }
 }
 
-void Unit::RemoveSingleAuraFromStack(uint32 spellId, uint32 effindex)
+void Unit::RemoveSingleAuraFromStack(uint32 spellId, uint32 effindex, AuraRemoveMode mode)
 {
     AuraMap::iterator iter = m_Auras.find(spellEffectPair(spellId, effindex));
     if(iter != m_Auras.end())
@@ -3849,9 +4042,30 @@ void Unit::RemoveSingleAuraFromStack(uint32 spellId, uint32 effindex)
             iter->second->UpdateSlotCounterAndDuration();
             return; // not remove aura if stack amount > 1
         }
-        RemoveAura(iter);
+        RemoveAura(iter,mode);
     }
 }
+
+void Unit::RemoveSingleSpellAurasByCasterSpell(uint32 spellId, uint64 casterGUID, AuraRemoveMode mode)
+{
+    for (int i=0; i<3; ++i)
+        RemoveSingleAuraByCasterSpell(spellId, i, casterGUID, mode);
+}
+
+void Unit::RemoveSingleAuraByCasterSpell(uint32 spellId, uint32 effindex, uint64 casterGUID, AuraRemoveMode mode)
+{
+    spellEffectPair spair = spellEffectPair(spellId, effindex);
+    for(AuraMap::iterator iter = m_Auras.lower_bound(spair); iter != m_Auras.upper_bound(spair); ++iter)
+    {
+        Aura *aur = iter->second;
+        if (aur->GetId() == spellId && aur->GetCasterGUID() == casterGUID)
+        {
+            RemoveAura(iter,mode);
+            break;
+        }
+    }
+}
+
 
 void Unit::RemoveAurasDueToSpell(uint32 spellId, Aura* except)
 {
@@ -7674,6 +7888,9 @@ bool Unit::isSpellCrit(Unit *pVictim, SpellEntry const *spellProto, SpellSchoolM
     if((spellProto->AttributesEx2 & SPELL_ATTR_EX2_CANT_CRIT))
         return false;
 
+    if(spellProto->Id == 33619)
+        return false;
+
     float crit_chance = 0.0f;
     switch(spellProto->DmgClass)
     {
@@ -8605,10 +8822,6 @@ bool Unit::isVisibleForOrDetect(Unit const* u, WorldObject const* viewPoint, boo
             return false;
     }
 
-    // always seen by owner
-    if (GetCharmerOrOwnerGUID()==u->GetGUID())
-        return true;
-
     // always seen by far sight caster
     if (u->GetTypeId()==TYPEID_PLAYER && ((Player*)u)->GetFarSight()==GetGUID())
         return true;
@@ -8652,6 +8865,10 @@ bool Unit::isVisibleForOrDetect(Unit const* u, WorldObject const* viewPoint, boo
         if (!IsWithinDistInMap(viewPoint, _map.GetVisibilityDistance() + (inVisibleList ? World::GetVisibleUnitGreyDistance() : 0.0f), is3dDistance))
             return false;
     }
+
+    // always seen by owner
+    if (GetCharmerOrOwnerGUID()==u->GetGUID())
+        return true;
 
     // isInvisibleForAlive() those units can only be seen by dead or if other
     // unit is also invisible for alive.. if an isinvisibleforalive unit dies we
@@ -11453,4 +11670,44 @@ void Unit::KnockBackFrom(Unit* target, float horizintalSpeed, float verticalSpee
         //       with CreatureRelocation at server side
         NearTeleportTo(fx, fy, fz, GetOrientation(), this == target);
     }
+}
+
+void Unit::StopAttackFaction(uint32 faction_id)
+{
+    if (Unit* victim = getVictim())
+    {
+        if (victim->getFactionTemplateEntry()->faction==faction_id)
+        {
+            AttackStop();
+            if (IsNonMeleeSpellCasted(false))
+                InterruptNonMeleeSpells(false);
+
+            // melee and ranged forced attack cancel
+            if (GetTypeId() == TYPEID_PLAYER)
+                ((Player*)this)->SendAttackSwingCancelAttack();
+        }
+    }
+
+    AttackerSet const& attackers = getAttackers();
+    for(AttackerSet::const_iterator itr = attackers.begin(); itr != attackers.end();)
+    {
+        if ((*itr)->getFactionTemplateEntry()->faction==faction_id)
+        {
+            (*itr)->AttackStop();
+            itr = attackers.begin();
+        }
+        else
+            ++itr;
+    }
+
+    getHostileRefManager().deleteReferencesForFaction(faction_id);
+
+    if(Pet* pet = GetPet())
+        pet->StopAttackFaction(faction_id);
+    if(Unit* charm = GetCharm())
+        charm->StopAttackFaction(faction_id);
+
+    for(GuardianPetList::const_iterator itr = m_guardianPets.begin(); itr != m_guardianPets.end(); ++itr)
+        if(Unit* guardian = Unit::GetUnit(*this,*itr))
+            guardian->StopAttackFaction(faction_id);
 }

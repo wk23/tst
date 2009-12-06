@@ -2016,6 +2016,7 @@ void SpellMgr::LoadSpellScriptTarget()
         {
             if( spellProto->EffectImplicitTargetA[i]==TARGET_SCRIPT ||
                 spellProto->EffectImplicitTargetB[i]==TARGET_SCRIPT ||
+                spellProto->Id==33655 ||
                 spellProto->EffectImplicitTargetA[i]==TARGET_SCRIPT_COORDINATES ||
                 spellProto->EffectImplicitTargetB[i]==TARGET_SCRIPT_COORDINATES )
             {

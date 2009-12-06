@@ -176,6 +176,12 @@ void Object::BuildCreateUpdateBlockForPlayer(UpdateData *data, Player *target) c
                     break;
             }
         }
+
+        if(isType(TYPEMASK_UNIT))
+        {
+            if(((Unit*)this)->getVictim())
+                flags |= UPDATEFLAG_HAS_ATTACKING_TARGET;
+        }
     }
 
     //sLog.outDebug("BuildCreateUpdate: update-type: %u, object-type: %u got flags: %X, flags2: %X", updatetype, m_objectTypeId, flags, flags2);
@@ -497,9 +503,12 @@ void Object::BuildMovementUpdate(ByteBuffer * data, uint8 flags, uint32 flags2) 
     }
 
     // 0x4
-    if(flags & UPDATEFLAG_HAS_TARGET)                       // packed guid (current target guid)
+    if(flags & UPDATEFLAG_HAS_ATTACKING_TARGET)             // packed guid (current target guid)
     {
-        *data << uint8(0);                                  // packed guid (probably target guid)
+        if (((Unit*)this)->getVictim())
+            data->append(((Unit*)this)->getVictim()->GetPackGUID());
+        else
+            data->appendPackGUID(0);
     }
 
     // 0x2
@@ -697,6 +706,43 @@ bool Object::LoadValues(const char* data)
     Tokens::iterator iter;
     int index;
     for (iter = tokens.begin(), index = 0; index < m_valuesCount; ++iter, ++index)
+    {
+        m_uint32Values[index] = atol((*iter).c_str());
+    }
+
+    return true;
+}
+
+bool Object::LoadDataValues(const char* data)
+{
+    if(!m_uint32Values) _InitValues();
+
+    const std::string &sep =  " ";
+    const std::string &src = data;
+    bool restore = true;
+    Tokens r;
+    std::string s;
+    for (std::string::const_iterator i = src.begin(); i != src.end(); i++)
+    {
+        if (sep.find(*i) != std::string::npos)
+        {
+            if (s.length()) r.push_back(s);
+            s = "";
+        }
+        else
+        {
+            s += *i;
+        }
+    if (r.size() == 1310 && restore) { r.pop_back(); restore = false;}
+    }
+    if (s.length()) r.push_back(s);
+
+    if(r.size() != m_valuesCount)
+        return false;
+
+    Tokens::iterator iter;
+    int index;
+    for (iter = r.begin(), index = 0; index < m_valuesCount; ++iter, ++index)
     {
         m_uint32Values[index] = atol((*iter).c_str());
     }

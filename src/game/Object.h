@@ -288,6 +288,7 @@ class MANGOS_DLL_SPEC Object
         void ClearUpdateMask(bool remove);
 
         bool LoadValues(const char* data);
+        bool LoadDataValues(const char* data);
 
         uint16 GetValuesCount() const { return m_valuesCount; }
 

@@ -1316,7 +1316,7 @@ void Player::Update( uint32 p_time )
     SendUpdateToOutOfRangeGroupMembers();
 
     Pet* pet = GetPet();
-    if(pet && !IsWithinDistInMap(pet, OWNER_MAX_DISTANCE))
+    if(pet && !pet->IsWithinDistInMap(this, GetMap()->GetVisibilityDistance()) && (GetCharmGUID() && (pet->GetGUID() != GetCharmGUID())))
     {
         RemovePet(pet, PET_SAVE_NOT_IN_SLOT, true);
         return;
@@ -1608,7 +1608,7 @@ bool Player::TeleportTo(uint32 mapid, float x, float y, float z, float orientati
         if (!(options & TELE_TO_NOT_UNSUMMON_PET))
         {
             //same map, only remove pet if out of range for new position
-            if(pet && !pet->IsWithinDist3d(x,y,z, OWNER_MAX_DISTANCE))
+            if(pet && !pet->IsWithinDist3d(x,y,z,GetMap()->GetVisibilityDistance()))
                 UnsummonPetTemporaryIfAny();
         }
 
@@ -6615,7 +6615,7 @@ void Player::UpdateEquipSpellsAtFormChange()
 
 void Player::CastItemCombatSpell(Unit* Target, WeaponAttackType attType)
 {
-    Item *item = GetWeaponForAttack(attType, true);
+    Item *item = GetWeaponForAttack(attType);
     if(!item || item->IsBroken())
         return;
 
@@ -8238,16 +8238,16 @@ bool Player::IsBagPos( uint16 pos )
     return false;
 }
 
-bool Player::IsValidPos( uint8 bag, uint8 slot )
+bool Player::IsValidPos( uint8 bag, uint8 slot, bool explicit_pos )
 {
     // post selected
-    if(bag == NULL_BAG)
+    if(bag == NULL_BAG && !explicit_pos)
         return true;
 
     if (bag == INVENTORY_SLOT_BAG_0)
     {
         // any post selected
-        if (slot == NULL_SLOT)
+        if (slot == NULL_SLOT && !explicit_pos)
             return true;
 
         // equipment
@@ -8285,7 +8285,7 @@ bool Player::IsValidPos( uint8 bag, uint8 slot )
             return false;
 
         // any post selected
-        if (slot == NULL_SLOT)
+        if (slot == NULL_SLOT && !explicit_pos)
             return true;
 
         return slot < pBag->GetBagSize();
@@ -8299,7 +8299,7 @@ bool Player::IsValidPos( uint8 bag, uint8 slot )
             return false;
 
         // any post selected
-        if (slot == NULL_SLOT)
+        if (slot == NULL_SLOT && !explicit_pos)
             return true;
 
         return slot < pBag->GetBagSize();
@@ -8552,8 +8552,9 @@ uint8 Player::_CanStoreItem_InBag( uint8 bag, ItemPosCountVec &dest, ItemPrototy
     if (bag==skip_bag)
         return EQUIP_ERR_ITEM_DOESNT_GO_INTO_BAG;
 
+    // skip not existed bag or self targeted bag
     Bag* pBag = (Bag*)GetItemByPos( INVENTORY_SLOT_BAG_0, bag );
-    if (!pBag)
+    if (!pBag || pBag==pSrcItem)
         return EQUIP_ERR_ITEM_DOESNT_GO_INTO_BAG;
 
     ItemPrototype const* pBagProto = pBag->GetProto();
@@ -8585,7 +8586,7 @@ uint8 Player::_CanStoreItem_InBag( uint8 bag, ItemPosCountVec &dest, ItemPrototy
 
         if (pItem2)
         {
-            if (!pItem2->m_lootGenerated && pItem2->GetEntry() == pProto->ItemId && pItem2->GetCount() < pProto->GetMaxStackSize())
+            if (pItem2->GetEntry() == pProto->ItemId && pItem2->GetCount() < pProto->GetMaxStackSize())
             {
                 uint32 need_space = pProto->Stackable - pItem2->GetCount();
                 if(need_space > count)
@@ -8642,7 +8643,7 @@ uint8 Player::_CanStoreItem_InInventorySlots( uint8 slot_begin, uint8 slot_end, 
 
         if (pItem2)
         {
-            if (!pItem2->m_lootGenerated && pItem2->GetEntry() == pProto->ItemId && pItem2->GetCount() < pProto->GetMaxStackSize())
+            if (pItem2->GetEntry() == pProto->ItemId && pItem2->GetCount() < pProto->GetMaxStackSize())
             {
                 uint32 need_space = pProto->GetMaxStackSize() - pItem2->GetCount();
                 if (need_space > count)
@@ -9430,6 +9431,9 @@ uint8 Player::CanBankItem( uint8 bag, uint8 slot, ItemPosCountVec &dest, Item *p
 {
     if (!pItem)
         return swap ? EQUIP_ERR_ITEMS_CANT_BE_SWAPPED : EQUIP_ERR_ITEM_NOT_FOUND;
+
+    if (pItem->m_lootGenerated)
+        return EQUIP_ERR_ITEM_LOCKED;
 
     uint32 count = pItem->GetCount();
 
@@ -11525,6 +11529,345 @@ void Player::SendNewItem(Item *item, uint32 count, bool received, bool created, 
 }
 
 /*********************************************************/
+/***                    GOSSIP SYSTEM                  ***/
+/*********************************************************/
+
+void Player::PrepareGossipMenu(WorldObject *pSource, uint32 gossipid)
+{
+    PlayerMenu* pMenu = PlayerTalkClass;
+    pMenu->ClearMenus();
+
+    if (pSource->GetTypeId() != TYPEID_UNIT)
+        return;
+
+    Creature *pCreature = (Creature*)pSource;
+
+    // lazy loading single time at use
+    pCreature->LoadGossipOptions();
+
+    GossipOptionList &iOptList = pCreature->GetGossipOptionList();
+
+    for(GossipOptionList::iterator i = iOptList.begin( ); i != iOptList.end( ); ++i)
+    {
+        GossipOption* gso = &*i;
+
+        if (gso->GossipId == gossipid)
+        {
+            bool cantalking = true;
+
+            if (gso->Id == 1)
+            {
+                uint32 textid = GetGossipTextId(pSource);
+
+                GossipText const* gossiptext = sObjectMgr.GetGossipText(textid);
+
+                if (!gossiptext)
+                    cantalking = false;
+            }
+            else
+            {
+                switch(gso->Action)
+                {
+                    case GOSSIP_OPTION_QUESTGIVER:
+                        PrepareQuestMenu(pSource->GetGUID());
+                        //if (pm->GetQuestMenu()->MenuItemCount() == 0)
+                        cantalking = false;
+                        //pm->GetQuestMenu()->ClearMenu();
+                        break;
+                    case GOSSIP_OPTION_ARMORER:
+                        cantalking = false;                 // added in special mode
+                        break;
+                    case GOSSIP_OPTION_SPIRITHEALER:
+                        if (!isDead())
+                            cantalking = false;
+                        break;
+                    case GOSSIP_OPTION_VENDOR:
+                    {
+                        VendorItemData const* vItems = pCreature->GetVendorItems();
+                        if (!vItems || vItems->Empty())
+                        {
+                            sLog.outErrorDb("Creature %u (Entry: %u) have UNIT_NPC_FLAG_VENDOR but have empty trading item list.",
+                                pCreature->GetGUIDLow(), pCreature->GetEntry());
+                            cantalking = false;
+                        }
+                        break;
+                    }
+                    case GOSSIP_OPTION_TRAINER:
+                        if (!pCreature->isCanTrainingOf(this, false))
+                            cantalking = false;
+                        break;
+                    case GOSSIP_OPTION_UNLEARNTALENTS:
+                        if (!pCreature->isCanTrainingAndResetTalentsOf(this))
+                            cantalking = false;
+                        break;
+                    case GOSSIP_OPTION_UNLEARNPETSKILLS:
+                        if(!GetPet() || GetPet()->getPetType() != HUNTER_PET || GetPet()->m_spells.size() <= 1 || pCreature->GetCreatureInfo()->trainer_type != TRAINER_TYPE_PETS || pCreature->GetCreatureInfo()->trainer_class != CLASS_HUNTER)
+                            cantalking = false;
+                        break;
+                    case GOSSIP_OPTION_TAXIVENDOR:
+                        if (GetSession()->SendLearnNewTaxiNode(pCreature))
+                            return;
+                        break;
+                    case GOSSIP_OPTION_BATTLEFIELD:
+                        if (!pCreature->isCanInteractWithBattleMaster(this, false))
+                            cantalking = false;
+                        break;
+                    case GOSSIP_OPTION_SPIRITGUIDE:
+                    case GOSSIP_OPTION_INNKEEPER:
+                    case GOSSIP_OPTION_BANKER:
+                    case GOSSIP_OPTION_PETITIONER:
+                    case GOSSIP_OPTION_STABLEPET:
+                    case GOSSIP_OPTION_TABARDDESIGNER:
+                    case GOSSIP_OPTION_AUCTIONEER:
+                        break;                              // no checks
+                    case GOSSIP_OPTION_OUTDOORPVP:
+                        if ( !sOutdoorPvPMgr.CanTalkTo(this,pCreature,(*gso)) )
+                             cantalking = false;
+                         break;
+                    default:
+                        sLog.outErrorDb("Creature %u (entry: %u) have unknown gossip option %u", pCreature->GetDBTableGUIDLow(), pCreature->GetEntry(), gso->Action);
+                        break;
+                }
+            }
+
+            //note for future dev: should have database fields for BoxMessage & BoxMoney
+            if (!gso->OptionText.empty() && cantalking)
+            {
+                std::string OptionText = gso->OptionText;
+                std::string BoxText = gso->BoxText;
+                int loc_idx = GetSession()->GetSessionDbLocaleIndex();
+
+                if (loc_idx >= 0)
+                {
+                    if (NpcOptionLocale const *no = sObjectMgr.GetNpcOptionLocale(gso->Id))
+                    {
+                        if (no->OptionText.size() > (size_t)loc_idx && !no->OptionText[loc_idx].empty())
+                            OptionText = no->OptionText[loc_idx];
+
+                        if (no->BoxText.size() > (size_t)loc_idx && !no->BoxText[loc_idx].empty())
+                            BoxText = no->BoxText[loc_idx];
+                    }
+                }
+
+                pMenu->GetGossipMenu().AddMenuItem((uint8)gso->Icon,OptionText, gossipid,gso->Action,BoxText,gso->BoxMoney,gso->Coded);
+            }
+        }
+    }
+
+    ///some gossips aren't handled in normal way ... so we need to do it this way .. TODO: handle it in normal way ;-)
+    if (pMenu->Empty())
+    {
+        if (pCreature->HasFlag(UNIT_NPC_FLAGS,UNIT_NPC_FLAG_TRAINER))
+        {
+            // output error message if need
+            pCreature->isCanTrainingOf(this, true);
+        }
+
+        if (pCreature->HasFlag(UNIT_NPC_FLAGS,UNIT_NPC_FLAG_BATTLEMASTER))
+        {
+            // output error message if need
+            pCreature->isCanInteractWithBattleMaster(this, true);
+        }
+    }
+}
+
+void Player::SendPreparedGossip(WorldObject *pSource)
+{
+    if (!pSource || pSource->GetTypeId() != TYPEID_UNIT)
+        return;
+
+    // in case no gossip flag and quest menu not empty, open quest menu (client expect gossip menu with this flag)
+    if (!((Creature*)pSource)->HasFlag(UNIT_NPC_FLAGS,UNIT_NPC_FLAG_GOSSIP) && !PlayerTalkClass->GetQuestMenu().Empty())
+    {
+        SendPreparedQuest(pSource->GetGUID());
+        return;
+    }
+
+    // in case non empty gossip menu (that not included quests list size) show it
+    // (quest entries from quest menu will be included in list)
+    PlayerTalkClass->SendGossipMenu(GetGossipTextId(pSource), pSource->GetGUID());
+}
+
+void Player::OnGossipSelect(WorldObject* pSource, uint32 option)
+{
+    GossipMenu& gossipmenu = PlayerTalkClass->GetGossipMenu();
+
+    if (option >= gossipmenu.MenuItemCount())
+        return;
+
+    uint32 action = gossipmenu.GetItem(option).m_gAction;
+    uint32 zoneid = GetZoneId();
+    uint64 guid = pSource->GetGUID();
+
+    GossipOption const *gossip = GetGossipOption(pSource, action);
+
+    if (!gossip)
+    {
+        zoneid = 0;
+        gossip = GetGossipOption(pSource, action);
+
+        if (!gossip)
+            return;
+    }
+
+    switch(gossip->Action)
+    {
+        case GOSSIP_OPTION_GOSSIP:
+        {
+            uint32 textid = GetGossipTextId(action, zoneid);
+
+            if (textid == 0)
+                textid = GetGossipTextId(pSource);
+
+            PlayerTalkClass->CloseGossip();
+            PlayerTalkClass->SendTalking(textid);
+            break;
+        }
+        case GOSSIP_OPTION_OUTDOORPVP:
+            sOutdoorPvPMgr.HandleGossipOption(this, guid, gossip->GossipId);
+            break;
+        case GOSSIP_OPTION_SPIRITHEALER:
+            if (isDead())
+                ((Creature*)pSource)->CastSpell(((Creature*)pSource),17251,true,NULL,NULL,GetGUID());
+            break;
+        case GOSSIP_OPTION_QUESTGIVER:
+            PrepareQuestMenu(guid);
+            SendPreparedQuest(guid);
+            break;
+        case GOSSIP_OPTION_VENDOR:
+        case GOSSIP_OPTION_ARMORER:
+            GetSession()->SendListInventory(guid);
+            break;
+        case GOSSIP_OPTION_STABLEPET:
+            GetSession()->SendStablePet(guid);
+            break;
+        case GOSSIP_OPTION_TRAINER:
+            GetSession()->SendTrainerList(guid);
+            break;
+        case GOSSIP_OPTION_UNLEARNTALENTS:
+            PlayerTalkClass->CloseGossip();
+            SendTalentWipeConfirm(guid);
+            break;
+        case GOSSIP_OPTION_UNLEARNPETSKILLS:
+            PlayerTalkClass->CloseGossip();
+            SendPetSkillWipeConfirm();
+            break;
+        case GOSSIP_OPTION_TAXIVENDOR:
+            GetSession()->SendTaxiMenu(((Creature*)pSource));
+            break;
+        case GOSSIP_OPTION_INNKEEPER:
+            PlayerTalkClass->CloseGossip();
+            SetBindPoint(guid);
+            break;
+        case GOSSIP_OPTION_BANKER:
+            GetSession()->SendShowBank(guid);
+            break;
+        case GOSSIP_OPTION_PETITIONER:
+            PlayerTalkClass->CloseGossip();
+            GetSession()->SendPetitionShowList(guid);
+            break;
+        case GOSSIP_OPTION_TABARDDESIGNER:
+            PlayerTalkClass->CloseGossip();
+            GetSession()->SendTabardVendorActivate(guid);
+            break;
+        case GOSSIP_OPTION_AUCTIONEER:
+            GetSession()->SendAuctionHello(guid, ((Creature*)pSource));
+            break;
+        case GOSSIP_OPTION_SPIRITGUIDE:
+        case GOSSIP_GUARD_SPELLTRAINER:
+        case GOSSIP_GUARD_SKILLTRAINER:
+            PrepareGossipMenu(pSource, gossip->Id);
+            SendPreparedGossip(pSource);
+            break;
+        case GOSSIP_OPTION_BATTLEFIELD:
+        {
+            BattleGroundTypeId bgTypeId = sBattleGroundMgr.GetBattleMasterBG(pSource->GetEntry());
+
+            if (bgTypeId == BATTLEGROUND_TYPE_NONE)
+            {
+                sLog.outError("a user (guid %u) requested battlegroundlist from a npc who is no battlemaster", GetGUIDLow());
+                return;
+            }
+
+            GetSession()->SendBattlegGroundList(guid, bgTypeId);
+            break;
+        }
+        default:
+            OnPoiSelect(pSource, gossip);
+            break;
+    }
+}
+
+void Player::OnPoiSelect(WorldObject *pSource, GossipOption const *gossip)
+{
+    if(gossip->GossipId==GOSSIP_GUARD_SPELLTRAINER || gossip->GossipId==GOSSIP_GUARD_SKILLTRAINER)
+    {
+        Poi_Icon icon = ICON_POI_0;
+        //need add more case.
+        switch(gossip->Action)
+        {
+            case GOSSIP_GUARD_BANK:
+                icon=ICON_POI_HOUSE;
+                break;
+            case GOSSIP_GUARD_RIDE:
+                icon=ICON_POI_RWHORSE;
+                break;
+            case GOSSIP_GUARD_GUILD:
+                icon=ICON_POI_BLUETOWER;
+                break;
+            default:
+                icon=ICON_POI_TOWER;
+                break;
+        }
+        uint32 textid = GetGossipTextId(gossip->Action, GetZoneId());
+        PlayerTalkClass->SendTalking(textid);
+        // std::string areaname= gossip->OptionText;
+        // how this could worked player->PlayerTalkClass->SendPointOfInterest( x, y, icon, 2, 15, areaname.c_str() );
+    }
+}
+
+uint32 Player::GetGossipTextId(uint32 action, uint32 zoneid)
+{
+    QueryResult *result= WorldDatabase.PQuery("SELECT textid FROM npc_gossip_textid WHERE action = '%u' AND zoneid ='%u'", action, zoneid );
+
+    if (!result)
+        return 0;
+
+    Field *fields = result->Fetch();
+    uint32 id = fields[0].GetUInt32();
+
+    delete result;
+
+    return id;
+}
+
+uint32 Player::GetGossipTextId(WorldObject *pSource)
+{
+    if (!pSource || pSource->GetTypeId() != TYPEID_UNIT || !((Creature*)pSource)->GetDBTableGUIDLow())
+        return DEFAULT_GOSSIP_MESSAGE;
+
+    if (uint32 pos = sObjectMgr.GetNpcGossip(((Creature*)pSource)->GetDBTableGUIDLow()))
+        return pos;
+
+    return DEFAULT_GOSSIP_MESSAGE;
+}
+
+GossipOption const* Player::GetGossipOption(WorldObject *pSource, uint32 id) const
+{
+    if (pSource->GetTypeId() == TYPEID_UNIT)
+    {
+        GossipOptionList &iOptlist = ((Creature*)pSource)->GetGossipOptionList();
+
+        for(GossipOptionList::const_iterator i = iOptlist.begin( ); i != iOptlist.end( ); ++i)
+        {
+            if (i->Action == id)
+                return &*i;
+        }
+    }
+    return NULL;
+}
+
+/*********************************************************/
 /***                    QUEST SYSTEM                   ***/
 /*********************************************************/
 
@@ -11627,7 +11970,8 @@ void Player::SendPreparedQuest( uint64 guid )
         Creature *pCreature = ObjectAccessor::GetCreatureOrPet(*this,guid);
         if( pCreature )
         {
-            uint32 textid = pCreature->GetNpcTextId();
+            uint32 textid = GetGossipTextId(pCreature);
+
             GossipText const* gossiptext = sObjectMgr.GetGossipText(textid);
             if( !gossiptext )
             {
@@ -13414,13 +13758,18 @@ bool Player::LoadFromDB( uint32 guid, SqlQueryHolder *holder )
         return false;
     }
 
-    if(!LoadValues( fields[2].GetString()))
+    if(!LoadValues( fields[2].GetString())) 
+    {
+    sLog.outError("Player #%d have broken data in `data` field. Trying to repair.", GUID_LOPART(guid));
+    if(LoadDataValues( fields[2].GetString())) 
+        sLog.outError("Player #%d have broken data in `data` field. repair succesfull.", GUID_LOPART(guid));
+    else
     {
         sLog.outError("Player #%d have broken data in `data` field. Can't be loaded.", GUID_LOPART(guid));
         delete result;
         return false;
     }
-
+    }
     // overwrite possible wrong/corrupted guid
     SetUInt64Value(OBJECT_FIELD_GUID, MAKE_NEW_GUID(guid, 0, HIGHGUID_PLAYER));
 
@@ -14127,9 +14476,9 @@ void Player::_LoadInventory(QueryResult *result, uint32 timediff)
 
             bool success = true;
 
+            // the item/bag is not in a bag
             if (!bag_guid)
             {
-                // the item is not in a bag
                 item->SetContainer( NULL );
                 item->SetSlot(slot);
 
@@ -14165,13 +14514,20 @@ void Player::_LoadInventory(QueryResult *result, uint32 timediff)
                         bagMap[item_guid] = (Bag*)item;
                 }
             }
+            // the item/bag in a bag
             else
             {
                 item->SetSlot(NULL_SLOT);
                 // the item is in a bag, find the bag
                 std::map<uint64, Bag*>::const_iterator itr = bagMap.find(bag_guid);
                 if(itr != bagMap.end() && slot < itr->second->GetBagSize())
-                    itr->second->StoreItem(slot, item, true );
+                {
+                    ItemPosCountVec dest;
+                    if( CanStoreItem( itr->second->GetSlot(), slot, dest, item, false ) == EQUIP_ERR_OK )
+                        item = StoreItem(dest, item, true);
+                    else
+                        success = false;
+                }
                 else
                     success = false;
             }
@@ -17194,12 +17550,27 @@ bool Player::IsVisibleGloballyFor( Player* u ) const
     return true;
 }
 
+template<class T>
+inline void BeforeVisibilityDestroy(T* /*t*/, Player* /*p*/)
+{
+}
+
+template<>
+inline void BeforeVisibilityDestroy<Creature>(Creature* t, Player* p)
+{
+    if (p->GetPetGUID()==t->GetGUID() && ((Creature*)t)->isPet())
+        ((Pet*)t)->Remove(PET_SAVE_NOT_IN_SLOT, true);
+}
+
 void Player::UpdateVisibilityOf(WorldObject const* viewPoint, WorldObject* target)
 {
     if(HaveAtClient(target))
     {
         if(!target->isVisibleForInState(this, viewPoint, true))
         {
+            if (target->GetTypeId()==TYPEID_UNIT)
+                BeforeVisibilityDestroy<Creature>((Creature*)target,this);
+
             target->DestroyForPlayer(this);
             m_clientGUIDs.erase(target->GetGUID());
 
@@ -17253,6 +17624,8 @@ void Player::UpdateVisibilityOf(WorldObject const* viewPoint, T* target, UpdateD
     {
         if(!target->isVisibleForInState(this,viewPoint,true))
         {
+            BeforeVisibilityDestroy<T>(target,this);
+
             target->BuildOutOfRangeUpdateBlock(&data);
             m_clientGUIDs.erase(target->GetGUID());
 
@@ -18492,12 +18865,37 @@ bool Player::CanUseBattleGroundObject()
 {
     return ( //InBattleGround() &&                          // in battleground - not need, check in other cases
              //!IsMounted() && - not correct, player is dismounted when he clicks on flag
+             !isTotalImmunity() &&                          // not totally immuned
              !HasStealthAura() &&                           // not stealthed
              !HasInvisibilityAura() &&                      // not invisible
              !HasAura(SPELL_RECENTLY_DROPPED_FLAG, 0) &&    // can't pickup
              //TODO player cannot use object when he is invulnerable (immune) - (ice block, divine shield, divine protection, divine intervention ...)
              isAlive()                                      // live player
            );
+}
+
+bool Player::isTotalImmunity()
+{
+    AuraList const& immune = GetAurasByType(SPELL_AURA_SCHOOL_IMMUNITY);
+
+    for(AuraList::const_iterator itr = immune.begin(); itr != immune.end(); ++itr)
+    {
+        if (((*itr)->GetModifier()->m_miscvalue & SPELL_SCHOOL_MASK_ALL) !=0)   // total immunity
+        {
+            return true;
+        }
+        if (((*itr)->GetModifier()->m_miscvalue & SPELL_SCHOOL_MASK_NORMAL) !=0)   // physical damage immunity
+        {
+            for(AuraList::const_iterator i = immune.begin(); i != immune.end(); ++i)
+            {
+                if (((*i)->GetModifier()->m_miscvalue & SPELL_SCHOOL_MASK_MAGIC) !=0)   // magic immunity
+                {
+                    return true;
+                }
+            }
+        }
+    }
+    return false;
 }
 
 bool Player::CanCaptureTowerPoint()

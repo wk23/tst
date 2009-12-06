@@ -197,6 +197,10 @@ void WorldSession::HandleMoveSplineDoneOpcode(WorldPacket& recv_data)
     MovementInfo movementInfo;
     uint32 MovementFlags;
 
+    ReadMovementInfo(recv_data, &movementInfo);
+    MovementFlags = movementInfo.flags;
+    recv_data.read_skip<uint32>();                          // unk
+/*
     recv_data >> MovementFlags;
     recv_data >> movementInfo.unk1;
     recv_data >> movementInfo.time;
@@ -204,6 +208,7 @@ void WorldSession::HandleMoveSplineDoneOpcode(WorldPacket& recv_data)
     recv_data >> movementInfo.y;
     recv_data >> movementInfo.z;
     recv_data >> movementInfo.o;
+*/
     //<<< end movement anticheat
 
     uint32 curDest = GetPlayer()->m_taxi.GetTaxiDestination();
