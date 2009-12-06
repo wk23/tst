@@ -33,10 +33,14 @@ npc_trollbane
 npc_wing_commander_dabiree
 npc_wing_commander_brack
 npc_wounded_blood_elf
+
+npc_boar
+npc_fel_guard_hound
 EndContentData */
 
 #include "precompiled.h"
 #include "escort_ai.h"
+#include "follower_ai.h"
 
 /*######
 ## npc_aeranas
@@ -403,7 +407,7 @@ bool GossipHello_npc_gryphoneer_windbellow(Player* pPlayer, Creature* pCreature)
         pPlayer->GetQuestRewardStatus(QUEST_TO_THE_FRONT))
         pPlayer->ADD_GOSSIP_ITEM(GOSSIP_ICON_CHAT, GOSSIP_ITEM2_WIN, GOSSIP_SENDER_MAIN, GOSSIP_ACTION_INFO_DEF+2);
 
-    pPlayer->SEND_GOSSIP_MENU(pCreature->GetNpcTextId(), pCreature->GetGUID());
+    pPlayer->SEND_GOSSIP_MENU(pPlayer->GetGossipTextId(pCreature), pCreature->GetGUID());
     return true;
 }
 
@@ -441,7 +445,7 @@ bool GossipHello_npc_naladu(Player* pPlayer, Creature* pCreature)
         pPlayer->PrepareQuestMenu(pCreature->GetGUID());
 
     pPlayer->ADD_GOSSIP_ITEM(GOSSIP_ICON_CHAT, GOSSIP_NALADU_ITEM1, GOSSIP_SENDER_MAIN, GOSSIP_ACTION_INFO_DEF+1);
-    pPlayer->SEND_GOSSIP_MENU(pCreature->GetNpcTextId(), pCreature->GetGUID());
+    pPlayer->SEND_GOSSIP_MENU(pPlayer->GetGossipTextId(pCreature), pCreature->GetGUID());
     return true;
 }
 
@@ -478,7 +482,7 @@ bool GossipHello_npc_tracy_proudwell(Player* pPlayer, Creature* pCreature)
     if (pPlayer->GetQuestStatus(QUEST_DIGGING_FOR_PRAYER_BEADS) == QUEST_STATUS_INCOMPLETE)
         pPlayer->ADD_GOSSIP_ITEM(GOSSIP_ICON_CHAT, GOSSIP_TRACY_PROUDWELL_ITEM1, GOSSIP_SENDER_MAIN, GOSSIP_ACTION_INFO_DEF + 1);
 
-    pPlayer->SEND_GOSSIP_MENU(pCreature->GetNpcTextId(), pCreature->GetGUID());
+    pPlayer->SEND_GOSSIP_MENU(pPlayer->GetGossipTextId(pCreature), pCreature->GetGUID());
     return true;
 }
 
@@ -491,7 +495,7 @@ bool GossipSelect_npc_tracy_proudwell(Player* pPlayer, Creature* pCreature, uint
             pPlayer->SEND_GOSSIP_MENU(GOSSIP_TEXTID_TRACY_PROUDWELL1, pCreature->GetGUID());
             break;
         case GOSSIP_ACTION_INFO_DEF+2:
-            pPlayer->SEND_GOSSIP_MENU(pCreature->GetNpcTextId(), pCreature->GetGUID());
+            pPlayer->SEND_GOSSIP_MENU(pPlayer->GetGossipTextId(pCreature), pCreature->GetGUID());
             break;
         case GOSSIP_ACTION_TRADE:
             pPlayer->SEND_VENDORLIST(pCreature->GetGUID());
@@ -523,7 +527,7 @@ bool GossipHello_npc_trollbane(Player* pPlayer, Creature* pCreature)
 
     pPlayer->ADD_GOSSIP_ITEM(GOSSIP_ICON_CHAT, GOSSIP_TROLLBANE_ITEM1, GOSSIP_SENDER_MAIN, GOSSIP_ACTION_INFO_DEF + 1);
     pPlayer->ADD_GOSSIP_ITEM(GOSSIP_ICON_CHAT, GOSSIP_TROLLBANE_ITEM3, GOSSIP_SENDER_MAIN, GOSSIP_ACTION_INFO_DEF + 3);
-    pPlayer->SEND_GOSSIP_MENU(pCreature->GetNpcTextId(), pCreature->GetGUID());
+    pPlayer->SEND_GOSSIP_MENU(pPlayer->GetGossipTextId(pCreature), pCreature->GetGUID());
     return true;
 }
 
@@ -575,7 +579,7 @@ bool GossipHello_npc_wing_commander_dabiree(Player* pPlayer, Creature* pCreature
         pPlayer->GetQuestRewardStatus(QUEST_SHATTER_POINT))
         pPlayer->ADD_GOSSIP_ITEM(GOSSIP_ICON_CHAT, GOSSIP_ITEM2_DAB, GOSSIP_SENDER_MAIN, GOSSIP_ACTION_INFO_DEF+2);
 
-    pPlayer->SEND_GOSSIP_MENU(pCreature->GetNpcTextId(), pCreature->GetGUID());
+    pPlayer->SEND_GOSSIP_MENU(pPlayer->GetGossipTextId(pCreature), pCreature->GetGUID());
     return true;
 }
 
@@ -634,7 +638,7 @@ bool GossipHello_npc_wing_commander_brack(Player* pPlayer, Creature* pCreature)
         pPlayer->GetQuestRewardStatus(QUEST_SPINEBREAKER))
         pPlayer->ADD_GOSSIP_ITEM(GOSSIP_ICON_CHAT, GOSSIP_ITEM3_BRA, GOSSIP_SENDER_MAIN, GOSSIP_ACTION_INFO_DEF+3);
 
-    pPlayer->SEND_GOSSIP_MENU(pCreature->GetNpcTextId(), pCreature->GetGUID());
+    pPlayer->SEND_GOSSIP_MENU(pPlayer->GetGossipTextId(pCreature), pCreature->GetGUID());
     return true;
 }
 
@@ -746,6 +750,61 @@ bool QuestAccept_npc_wounded_blood_elf(Player* pPlayer, Creature* pCreature, con
     return true;
 }
 
+/*######
+## npc_fel_guard_hound
+######*/
+
+struct MANGOS_DLL_DECL npc_fel_guard_houndAI : public FollowerAI
+{
+    npc_fel_guard_houndAI(Creature* pCreature) : FollowerAI(pCreature) { 
+        if (pCreature->GetOwner() && pCreature->GetOwner()->GetTypeId() == TYPEID_PLAYER)
+        {
+            StartFollow((Player*)pCreature->GetOwner());
+            //SetFollowPaused(true);
+        }
+
+Reset(); }
+
+    uint32 S_Timer;
+    uint64 t_guid;
+
+    void Reset()
+    {
+            S_Timer = 10000;
+            t_guid = 0;
+    }
+
+    void UpdateFollowerAI(const uint32 diff)
+    {
+        if (S_Timer < diff)
+        {
+           if (m_creature->GetOwner())
+           if (m_creature->GetOwner()->GetTypeId() == TYPEID_PLAYER) 
+           if (Unit* target = m_creature->GetOwner()->getVictim())
+           {       
+               if (target->GetEntry() == 16863)
+                  t_guid = target->GetGUID();
+           }
+           if (t_guid !=0)
+           if (Unit* target = Unit::GetUnit(*m_creature,t_guid))
+           if ((target->getDeathState() == CORPSE)) // if (!target->isAlive())
+           {
+               DoCast(m_creature, 37688);
+               t_guid = 0;
+           }
+
+           S_Timer = 2000;
+        }else S_Timer -= diff;
+        if (m_creature->GetOwner() && m_creature->GetOwner()->GetTypeId() == TYPEID_PLAYER)
+        SetFollowPaused(false);
+    }
+};
+
+CreatureAI* GetAI_npc_fel_guard_hound(Creature* pCreature)
+{
+    return new npc_fel_guard_houndAI(pCreature);
+}
+
 void AddSC_hellfire_peninsula()
 {
     Script *newscript;
@@ -812,5 +871,10 @@ void AddSC_hellfire_peninsula()
     newscript->Name = "npc_wounded_blood_elf";
     newscript->GetAI = &GetAI_npc_wounded_blood_elf;
     newscript->pQuestAccept = &QuestAccept_npc_wounded_blood_elf;
+    newscript->RegisterSelf();
+
+    newscript = new Script;
+    newscript->Name = "npc_fel_guard_hound";
+    newscript->GetAI = &GetAI_npc_fel_guard_hound;
     newscript->RegisterSelf();
 }

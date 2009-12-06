@@ -51,7 +51,7 @@ const float afKaelLandPoint[] = {225.045, -276.236, -5.434};
 // If we assume DB handle summon, summon appear somewhere outside the platform where Orb is
 struct MANGOS_DLL_DECL npc_kalecgosAI : public ScriptedAI
 {
-    npc_kalecgosAI(Creature* pCreature) : ScriptedAI(pCreature) { Reset(); }
+    npc_kalecgosAI(Creature* pCreature) : ScriptedAI(pCreature) {Reset(); }
 
     uint32 m_uiTransformTimer;
 

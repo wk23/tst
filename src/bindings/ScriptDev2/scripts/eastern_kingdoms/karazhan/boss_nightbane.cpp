@@ -134,10 +134,9 @@ struct MANGOS_DLL_DECL boss_nightbaneAI : public ScriptedAI
 
     void ResetThreat()
     {
-        std::list<HostileReference*>& m_threatlist = m_creature->getThreatManager().getThreatList();
+        ThreatList const& m_threatlist = m_creature->getThreatManager().getThreatList();
         if(m_threatlist.empty()) return;
-        std::list<HostileReference*>::iterator i = m_threatlist.begin();
-        for(i = m_threatlist.begin(); i != m_threatlist.end(); ++i)
+        for(ThreatList::const_iterator i = m_threatlist.begin(); i != m_threatlist.end(); ++i)
         {
             Unit* pUnit = NULL;
             pUnit = Unit::GetUnit((*m_creature), (*i)->getUnitGuid());
@@ -242,10 +241,10 @@ struct MANGOS_DLL_DECL boss_nightbaneAI : public ScriptedAI
 
                 if (Charred_Timer < diff)
                 {
-                    std::list<HostileReference*>& m_threatlist = m_creature->getThreatManager().getThreatList();
+                    ThreatList const& m_threatlist = m_creature->getThreatManager().getThreatList();
                     std::list<Unit*> targets;
-                    std::list<HostileReference*>::iterator i = m_threatlist.begin();
-                    for(i = m_threatlist.begin(); i != m_threatlist.end(); ++i)
+
+                    for(ThreatList::const_iterator i = m_threatlist.begin(); i != m_threatlist.end(); ++i)
                     {
                         Unit* pUnit = NULL;
                         pUnit = Unit::GetUnit((*m_creature), (*i)->getUnitGuid());
@@ -331,9 +330,9 @@ struct MANGOS_DLL_DECL boss_nightbaneAI : public ScriptedAI
 
                 if (Fireball_Timer < diff)
                 {
-                    std::list<HostileReference*>& m_threatlist = m_creature->getThreatManager().getThreatList();
-                    std::list<HostileReference*>::iterator i = m_threatlist.begin();
-                    for(i = m_threatlist.begin(); i != m_threatlist.end(); ++i)
+                    ThreatList const& m_threatlist = m_creature->getThreatManager().getThreatList();
+
+                    for(ThreatList::const_iterator i = m_threatlist.begin(); i != m_threatlist.end(); ++i)
                     {
                         Unit* pUnit = NULL;
                         pUnit = Unit::GetUnit((*m_creature), (*i)->getUnitGuid());
