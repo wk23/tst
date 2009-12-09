@@ -34,7 +34,6 @@ npc_wing_commander_dabiree
 npc_wing_commander_brack
 npc_wounded_blood_elf
 
-npc_boar
 npc_fel_guard_hound
 EndContentData */
 
@@ -757,12 +756,12 @@ bool QuestAccept_npc_wounded_blood_elf(Player* pPlayer, Creature* pCreature, con
 struct MANGOS_DLL_DECL npc_fel_guard_houndAI : public FollowerAI
 {
     npc_fel_guard_houndAI(Creature* pCreature) : FollowerAI(pCreature) { 
-        if (pCreature->GetOwner() && pCreature->GetOwner()->GetTypeId() == TYPEID_PLAYER)
+/*        if (pCreature->GetOwner() && pCreature->GetOwner()->GetTypeId() == TYPEID_PLAYER)
         {
             StartFollow((Player*)pCreature->GetOwner());
-            //SetFollowPaused(true);
+            SetFollowPaused(true);
         }
-
+*/
 Reset(); }
 
     uint32 S_Timer;
@@ -795,8 +794,8 @@ Reset(); }
 
            S_Timer = 2000;
         }else S_Timer -= diff;
-        if (m_creature->GetOwner() && m_creature->GetOwner()->GetTypeId() == TYPEID_PLAYER)
-        SetFollowPaused(false);
+        //if (m_creature->GetOwner() && m_creature->GetOwner()->GetTypeId() == TYPEID_PLAYER)
+        //SetFollowPaused(false);
     }
 };
 
