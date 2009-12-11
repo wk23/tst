@@ -1533,7 +1533,7 @@ struct MANGOS_DLL_DECL npc_engAI : public ScriptedAI
                     //DoCast(m_creature,43552);
                     //DoCast(m_creature,43552);
                     m_creature->AttackerStateUpdate(m_creature->getVictim());
-                    m_creature->DealDamage(m_creature->getVictim(),135+rand()%31, NULL, DIRECT_DAMAGE, SPELL_SCHOOL_MASK_NORMAL, NULL, false);
+                    m_creature->DealDamage(m_creature->getVictim(),135+rand()%31, NULL, DIRECT_DAMAGE, SPELL_SCHOOL_MASK_FIRE, NULL, false);
                     m_creature->CastSpell(m_creature, 8149, true);
                     m_creature->DealDamage(m_creature, m_creature->GetHealth(), NULL, DIRECT_DAMAGE, SPELL_SCHOOL_MASK_NORMAL, NULL, false);
                     m_creature->RemoveCorpse();
