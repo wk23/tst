@@ -105,6 +105,7 @@ World::World()
     m_maxQueuedSessionCount = 0;
     m_resultQueue = NULL;
     m_NextDailyQuestReset = 0;
+    m_NextInstReset = time(NULL);
 
     m_defaultDbcLocale = LOCALE_enUS;
     m_availableDbcLocaleMask = 0;
@@ -1142,6 +1143,8 @@ void World::SetInitialWorldSettings()
     sLog.outString( "Packing instances..." );
     sInstanceSaveMgr.PackInstances();
 
+    InitInstResetTime();
+
     sLog.outString();
     sLog.outString( "Loading Localization strings..." );
     sObjectMgr.LoadCreatureLocales();
@@ -1151,6 +1154,7 @@ void World::SetInitialWorldSettings()
     sObjectMgr.LoadNpcTextLocales();
     sObjectMgr.LoadPageTextLocales();
     sObjectMgr.LoadNpcOptionLocales();
+    sObjectMgr.LoadPointOfInterestLocales();
     sObjectMgr.SetDBCLocaleIndex(GetDefaultDbcLocale());    // Get once for all the locale index of DBC language (console/broadcasts)
     sLog.outString( ">>> Localization strings loaded" );
     sLog.outString();
@@ -1208,6 +1212,9 @@ void World::SetInitialWorldSettings()
 
     sLog.outString( "Loading Creature Reputation OnKill Data..." );
     sObjectMgr.LoadReputationOnKill();
+
+    sLog.outString( "Loading Points Of Interest Data..." );
+    sObjectMgr.LoadPointsOfInterest();
 
     sLog.outString( "Loading Pet Create Spells..." );
     sObjectMgr.LoadPetCreateSpells();
@@ -1530,6 +1537,13 @@ void World::Update(uint32 diff)
     {
         ResetDailyQuests();
         m_NextDailyQuestReset += DAY;
+    }
+
+    /// Handle instance reset time
+    if(m_gameTime > m_NextInstReset)
+    {
+        sInstanceSaveMgr.CleanupInstances();
+        m_NextInstReset += DAY;
     }
 
     /// <ul><li> Handle auctions when the timer has passed
@@ -2784,6 +2798,26 @@ void World::ResetDailyQuests()
     for(SessionMap::const_iterator itr = m_sessions.begin(); itr != m_sessions.end(); ++itr)
         if(itr->second->GetPlayer())
             itr->second->GetPlayer()->ResetDailyQuestStatus();
+}
+
+void World::InitInstResetTime()
+{
+    // client built-in time for reset is 6:00 AM
+    // FIX ME: client not show day start time
+    time_t curTime = time(NULL);
+    tm localTm = *localtime(&curTime);
+    localTm.tm_hour = m_configs[CONFIG_INSTANCE_RESET_TIME_HOUR];
+    localTm.tm_min  = 0;
+    localTm.tm_sec  = 0;
+
+    // current day reset time
+    time_t curDayResetTime = mktime(&localTm);
+
+    // last reset time before current moment
+    time_t resetTime = (curTime < curDayResetTime) ? curDayResetTime - DAY : curDayResetTime;
+
+    // plan next reset time
+    m_NextInstReset = (curTime >= curDayResetTime) ? curDayResetTime + DAY : curDayResetTime;
 }
 
 void World::SetPlayerLimit( int32 limit, bool needUpdate )

@@ -806,7 +806,7 @@ void Aura::ApplyModifier(bool apply, bool Real)
 
 void Aura::UpdateAuraDuration()
 {
-    if(m_auraSlot >= MAX_AURAS || m_isPassive)
+    if(m_auraSlot >= MAX_AURAS || m_isPassive || m_maxduration == -1)
         return;
 
     if( m_target->GetTypeId() == TYPEID_PLAYER)

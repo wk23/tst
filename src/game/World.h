@@ -529,6 +529,7 @@ class World
 
         void InitDailyQuestResetTime();
         void ResetDailyQuests();
+        void InitInstResetTime();
     private:
         static volatile bool m_stopEvent;
         static uint8 m_ExitCode;
@@ -580,6 +581,9 @@ class World
 
         // next daily quests reset time
         time_t m_NextDailyQuestReset;
+
+        // next inst reset time
+        time_t m_NextInstReset;
 
         //Player Queue
         Queue m_QueuedPlayer;
