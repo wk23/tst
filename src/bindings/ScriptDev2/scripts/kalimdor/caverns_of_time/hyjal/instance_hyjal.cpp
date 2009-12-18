@@ -22,7 +22,14 @@ SDCategory: Caverns of Time, Mount Hyjal
 EndScriptData */
 
 #include "precompiled.h"
-#include "hyjal.h"
+#include "def_hyjal.h"
+
+enum
+{
+    ENCOUNTERS          = 5,
+
+    GO_ANCIENT_GEM      = 185557
+};
 
 /* Battle of Mount Hyjal encounters:
 0 - Rage Winterchill event
@@ -34,135 +41,117 @@ EndScriptData */
 
 struct MANGOS_DLL_DECL instance_mount_hyjal : public ScriptedInstance
 {
-    instance_mount_hyjal(Map* pMap) : ScriptedInstance(pMap) {Initialize();};
+    instance_mount_hyjal(Map *map) : ScriptedInstance(map) {Initialize();};
 
-    uint32 m_auiEncounter[MAX_ENCOUNTER];
-    std::string strSaveData;
+    uint32 Encounters[ENCOUNTERS];
+    std::string str_data;
 
-    std::list<uint64> lAncientGemGUIDList;
+    std::list<uint64> m_uiAncientGemGUID;
 
-    uint64 m_uiRageWinterchill;
-    uint64 m_uiAnetheron;
-    uint64 m_uiKazrogal;
-    uint64 m_uiAzgalor;
-    uint64 m_uiArchimonde;
-    uint64 m_uiJainaProudmoore;
-    uint64 m_uiThrall;
-    uint64 m_uiTyrandeWhisperwind;
+    uint64 RageWinterchill;
+    uint64 Anetheron;
+    uint64 Kazrogal;
+    uint64 Azgalor;
+    uint64 Archimonde;
+    uint64 JainaProudmoore;
+    uint64 Thrall;
+    uint64 TyrandeWhisperwind;
 
-    uint32 m_uiTrashCount;
+    uint32 Trash;
+    uint32 RAIDDAMAGE; 
+
 
     void Initialize()
     {
-        memset(&m_auiEncounter, 0, sizeof(m_auiEncounter));
+        m_uiAncientGemGUID.clear();
 
-        lAncientGemGUIDList.clear();
+        RageWinterchill = 0;
+        Anetheron = 0;
+        Kazrogal = 0;
+        Azgalor = 0;
+        Archimonde = 0;
+        JainaProudmoore = 0;
+        Thrall = 0;
+        TyrandeWhisperwind = 0;
 
-        m_uiRageWinterchill = 0;
-        m_uiAnetheron = 0;
-        m_uiKazrogal = 0;
-        m_uiAzgalor = 0;
-        m_uiArchimonde = 0;
-        m_uiJainaProudmoore = 0;
-        m_uiThrall = 0;
-        m_uiTyrandeWhisperwind = 0;
+        Trash = 0;
+        RAIDDAMAGE = 0; 
 
-        m_uiTrashCount = 0;
+        for(uint8 i = 0; i < ENCOUNTERS; ++i)
+            Encounters[i] = NOT_STARTED;
     }
 
     bool IsEncounterInProgress() const
     {
-        for(uint8 i = 0; i < MAX_ENCOUNTER; ++i)
-            if (m_auiEncounter[i] == IN_PROGRESS) return true;
+        for(uint8 i = 0; i < ENCOUNTERS; ++i)
+            if (Encounters[i] == IN_PROGRESS) return true;
 
         return false;
     }
 
-    void OnCreatureCreate(Creature* pCreature)
+    void OnCreatureCreate(Creature* pCreature, uint32 creature_entry)
     {
         switch(pCreature->GetEntry())
         {
-            case NPC_WINTERCHILL: m_uiRageWinterchill = pCreature->GetGUID(); break;
-            case NPC_ANETHERON: m_uiAnetheron = pCreature->GetGUID(); break;
-            case NPC_KAZROGAL: m_uiKazrogal = pCreature->GetGUID();  break;
-            case NPC_AZGALOR: m_uiAzgalor = pCreature->GetGUID(); break;
-            case NPC_ARCHIMONDE: m_uiArchimonde = pCreature->GetGUID(); break;
-            case NPC_JAINA: m_uiJainaProudmoore = pCreature->GetGUID(); break;
-            case NPC_THRALL: m_uiThrall = pCreature->GetGUID(); break;
-            case NPC_TYRANDE: m_uiTyrandeWhisperwind = pCreature->GetGUID(); break;
+            case 17767: RageWinterchill = pCreature->GetGUID(); break;
+            case 17808: Anetheron = pCreature->GetGUID(); break;
+            case 17888: Kazrogal = pCreature->GetGUID();  break;
+            case 17842: Azgalor = pCreature->GetGUID(); break;
+            case 17968: Archimonde = pCreature->GetGUID(); break;
+            case 17772: JainaProudmoore = pCreature->GetGUID(); break;
+            case 17852: Thrall = pCreature->GetGUID(); break;
+            case 17948: TyrandeWhisperwind = pCreature->GetGUID(); break;
         }
     }
 
     void OnObjectCreate(GameObject* pGo)
     {
         if (pGo->GetEntry() == GO_ANCIENT_GEM)
-            lAncientGemGUIDList.push_back(pGo->GetGUID());
+            m_uiAncientGemGUID.push_back(pGo->GetGUID());
     }
 
-    uint64 GetData64(uint32 uiData)
+    uint64 GetData64(uint32 identifier)
     {
-        switch(uiData)
+        switch(identifier)
         {
-            case DATA_RAGEWINTERCHILL: return m_uiRageWinterchill;
-            case DATA_ANETHERON: return m_uiAnetheron;
-            case DATA_KAZROGAL: return m_uiKazrogal;
-            case DATA_AZGALOR: return m_uiAzgalor;
-            case DATA_ARCHIMONDE: return m_uiArchimonde;
-            case DATA_JAINAPROUDMOORE: return m_uiJainaProudmoore;
-            case DATA_THRALL: return m_uiThrall;
-            case DATA_TYRANDEWHISPERWIND: return m_uiTyrandeWhisperwind;
+            case DATA_RAGEWINTERCHILL: return RageWinterchill;
+            case DATA_ANETHERON: return Anetheron;
+            case DATA_KAZROGAL: return Kazrogal;
+            case DATA_AZGALOR: return Azgalor;
+            case DATA_ARCHIMONDE: return Archimonde;
+            case DATA_JAINAPROUDMOORE: return JainaProudmoore;
+            case DATA_THRALL: return Thrall;
+            case DATA_TYRANDEWHISPERWIND: return TyrandeWhisperwind;
         }
 
         return 0;
     }
 
-    void SetData(uint32 uiType, uint32 uiData)
+    void SetData(uint32 type, uint32 data)
     {
-        switch(uiType)
+        switch(type)
         {
-            case TYPE_WINTERCHILL:
-                if (m_auiEncounter[0] == DONE)
-                    return;
-                m_auiEncounter[0] = uiData;
-                break;
-            case TYPE_ANETHERON:
-                if (m_auiEncounter[1] == DONE)
-                    return;
-                m_auiEncounter[1] = uiData;
-                break;
-            case TYPE_KAZROGAL:
-                if (m_auiEncounter[2] == DONE)
-                    return;
-                m_auiEncounter[2] = uiData;
-                break;
-            case TYPE_AZGALOR:
-                if (m_auiEncounter[3] == DONE)
-                    return;
-                m_auiEncounter[3] = uiData;
-                break;
-            case TYPE_ARCHIMONDE:
-                m_auiEncounter[4] = uiData;
-                break;
-
-            case DATA_RESET_TRASH_COUNT:
-                m_uiTrashCount = 0;
-                break;
+            case DATA_RAGEWINTERCHILLEVENT: Encounters[0] = data; break;
+            case DATA_ANETHERONEVENT:       Encounters[1] = data; break;
+            case DATA_KAZROGALEVENT:        Encounters[2] = data; break;
+            case DATA_AZGALOREVENT:         Encounters[3] = data; break;
+            case DATA_ARCHIMONDEEVENT:      Encounters[4] = data; break;
+            case DATA_RESET_TRASH_COUNT:    Trash = 0;            break;
+            case DATA_RESET_RAIDDAMAGE:    RAIDDAMAGE = 0;            break;
+            case DATA_RAIDDAMAGE: RAIDDAMAGE += data;            break;
 
             case DATA_TRASH:
-                if (uiData)
-                    m_uiTrashCount = uiData;
-                else
-                    --m_uiTrashCount;
-
-                DoUpdateWorldState(WORLD_STATE_ENEMYCOUNT, m_uiTrashCount);
+                if (data) Trash = data;
+                else      Trash--;
+                UpdateWorldState(WORLD_STATE_ENEMYCOUNT, Trash);
                 break;
 
             case TYPE_RETREAT:
-                if (uiData == SPECIAL)
+                if (data == SPECIAL)
                 {
-                    if (!lAncientGemGUIDList.empty())
+                    if (!m_uiAncientGemGUID.empty())
                     {
-                        for(std::list<uint64>::iterator itr = lAncientGemGUIDList.begin(); itr != lAncientGemGUIDList.end(); ++itr)
+                        for(std::list<uint64>::iterator itr = m_uiAncientGemGUID.begin(); itr != m_uiAncientGemGUID.end(); ++itr)
                         {
                             //don't know how long it expected
                             DoRespawnGameObject(*itr,DAY);
@@ -172,40 +161,55 @@ struct MANGOS_DLL_DECL instance_mount_hyjal : public ScriptedInstance
                 break;
         }
 
-        debug_log("SD2: Instance Hyjal: Instance data updated for event %u (Data=%u)", uiType, uiData);
+        debug_log("SD2: Instance Hyjal: Instance data updated for event %u (Data=%u)",type,data);
 
-        if (uiData == DONE)
+        if (data == DONE)
         {
             OUT_SAVE_INST_DATA;
 
             std::ostringstream saveStream;
-            saveStream << m_auiEncounter[0] << " " << m_auiEncounter[1] << " " << m_auiEncounter[2] << " "
-                << m_auiEncounter[3] << " " << m_auiEncounter[4];
+            saveStream << Encounters[0] << " " << Encounters[1] << " " << Encounters[2] << " "
+                << Encounters[3] << " " << Encounters[4];
 
-            strSaveData = saveStream.str();
+            str_data = saveStream.str();
 
             SaveToDB();
             OUT_SAVE_INST_DATA_COMPLETE;
         }
     }
 
-    uint32 GetData(uint32 uiType)
+    uint32 GetData(uint32 type)
     {
-        switch(uiType)
+        switch(type)
         {
-            case TYPE_WINTERCHILL:  return m_auiEncounter[0];
-            case TYPE_ANETHERON:    return m_auiEncounter[1];
-            case TYPE_KAZROGAL:     return m_auiEncounter[2];
-            case TYPE_AZGALOR:      return m_auiEncounter[3];
-            case TYPE_ARCHIMONDE:   return m_auiEncounter[4];
-            case DATA_TRASH:        return m_uiTrashCount;
+            case DATA_RAGEWINTERCHILLEVENT: return Encounters[0];
+            case DATA_ANETHERONEVENT:      return Encounters[1];
+            case DATA_KAZROGALEVENT:       return Encounters[2];
+            case DATA_AZGALOREVENT:        return Encounters[3];
+            case DATA_ARCHIMONDEEVENT:     return Encounters[4];
+            case DATA_TRASH:               return Trash;
+            case DATA_RAIDDAMAGE:               return RAIDDAMAGE;
         }
         return 0;
     }
 
+    void UpdateWorldState(uint32 id, uint32 state)
+    {
+        Map::PlayerList const& players = instance->GetPlayers();
+
+        if (!players.isEmpty())
+        {
+            for(Map::PlayerList::const_iterator itr = players.begin(); itr != players.end(); ++itr)
+            {
+                if (Player* pPlayer = itr->getSource())
+                    pPlayer->SendUpdateWorldState(id,state);
+            }
+        }else debug_log("SD2: Instance Hyjal: UpdateWorldState, but PlayerList is empty!");
+    }
+
     const char* Save()
     {
-        return strSaveData.c_str();
+        return str_data.c_str();
     }
 
     void Load(const char* in)
@@ -219,19 +223,19 @@ struct MANGOS_DLL_DECL instance_mount_hyjal : public ScriptedInstance
         OUT_LOAD_INST_DATA(in);
 
         std::istringstream loadStream(in);
-        loadStream >> m_auiEncounter[0] >> m_auiEncounter[1] >> m_auiEncounter[2] >> m_auiEncounter[3] >> m_auiEncounter[4];
+        loadStream >> Encounters[0] >> Encounters[1] >> Encounters[2] >> Encounters[3] >> Encounters[4];
 
-        for(uint8 i = 0; i < MAX_ENCOUNTER; ++i)
-            if (m_auiEncounter[i] == IN_PROGRESS)                // Do not load an encounter as IN_PROGRESS - reset it instead.
-                m_auiEncounter[i] = NOT_STARTED;
+        for(uint8 i = 0; i < ENCOUNTERS; ++i)
+            if (Encounters[i] == IN_PROGRESS)                // Do not load an encounter as IN_PROGRESS - reset it instead.
+                Encounters[i] = NOT_STARTED;
 
         OUT_LOAD_INST_DATA_COMPLETE;
     }
 };
 
-InstanceData* GetInstanceData_instance_mount_hyjal(Map* pMap)
+InstanceData* GetInstanceData_instance_mount_hyjal(Map* map)
 {
-    return new instance_mount_hyjal(pMap);
+    return new instance_mount_hyjal(map);
 }
 
 void AddSC_instance_mount_hyjal()

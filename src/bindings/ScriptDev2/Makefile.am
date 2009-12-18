@@ -256,6 +256,13 @@ scripts/kalimdor/caverns_of_time/hyjal/hyjal.h \
 scripts/kalimdor/caverns_of_time/hyjal/hyjalAI.cpp \
 scripts/kalimdor/caverns_of_time/hyjal/hyjalAI.h \
 scripts/kalimdor/caverns_of_time/hyjal/instance_hyjal.cpp \
+scripts/kalimdor/caverns_of_time/hyjal/boss_anetheron.cpp \
+scripts/kalimdor/caverns_of_time/hyjal/boss_azgalor.cpp \
+scripts/kalimdor/caverns_of_time/hyjal/boss_kazrogal.cpp \
+scripts/kalimdor/caverns_of_time/hyjal/boss_rage_winterchill.cpp \
+scripts/kalimdor/caverns_of_time/hyjal/def_hyjal.h \
+scripts/kalimdor/caverns_of_time/hyjal/hyjal_trash.cpp \
+scripts/kalimdor/caverns_of_time/hyjal/hyjal_trash.h \
 scripts/kalimdor/caverns_of_time/old_hillsbrad/boss_captain_skarloc.cpp \
 scripts/kalimdor/caverns_of_time/old_hillsbrad/boss_epoch_hunter.cpp \
 scripts/kalimdor/caverns_of_time/old_hillsbrad/boss_leutenant_drake.cpp \
