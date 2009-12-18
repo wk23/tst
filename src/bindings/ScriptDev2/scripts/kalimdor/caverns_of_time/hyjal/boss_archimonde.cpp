@@ -195,6 +195,13 @@ struct MANGOS_DLL_DECL boss_archimondeAI : public ScriptedAI
     boss_archimondeAI(Creature* pCreature) : ScriptedAI(pCreature)
     {
         pInstance = ((ScriptedInstance*)pCreature->GetInstanceData());
+        SpellEntry *TempSpell = (SpellEntry*)GetSpellStore()->LookupEntry(31944);
+        if(TempSpell)
+            TempSpell->EffectTriggerSpell[1] = 31969;
+/*        SpellEntry *TempSpell1 = (SpellEntry*)GetSpellStore()->LookupEntry(31969);
+        if(TempSpell1)
+            TempSpell1->EffectBasePoints[0] = 2250;*/
+            
         Reset();
     }
 
