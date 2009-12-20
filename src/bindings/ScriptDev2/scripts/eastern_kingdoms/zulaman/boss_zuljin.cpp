@@ -183,10 +183,18 @@ struct MANGOS_DLL_DECL boss_zuljinAI : public ScriptedAI
     uint32 Flame_Breath_Timer;
     uint32 Pillar_Of_Fire_Timer;
 
+    float spawn_x;
+    float spawn_y;
+    float spawn_z;
+
     void Reset()
     {
         if(pInstance)
             pInstance->SetData(DATA_ZULJINEVENT, NOT_STARTED);
+
+        spawn_x=m_creature->GetPositionX();
+        spawn_y=m_creature->GetPositionY();
+        spawn_z=m_creature->GetPositionZ();
 
         Phase = 0;
 
@@ -214,12 +222,37 @@ struct MANGOS_DLL_DECL boss_zuljinAI : public ScriptedAI
         TankGUID = 0;        
 
         DespawnAdds();
-        DespawnSummons(CREATURE_FEATHER_VORTEX);
-        DespawnSummons(CREATURE_COLUMN_OF_FIRE);
+        //DespawnSummons(CREATURE_FEATHER_VORTEX);
+        //DespawnSummons(CREATURE_COLUMN_OF_FIRE);
+        if (pInstance)
+        {
+            if (Creature* pVORTEX = pInstance->instance->GetCreature(CREATURE_FEATHER_VORTEX))
+                pVORTEX->ForcedDespawn();
+            if (Creature* pCOLUMN = pInstance->instance->GetCreature(CREATURE_COLUMN_OF_FIRE))
+                pCOLUMN->ForcedDespawn();
+        }
 
         m_creature->SetUInt32Value(UNIT_VIRTUAL_ITEM_SLOT_DISPLAY, 47174);
         m_creature->SetUInt32Value(UNIT_VIRTUAL_ITEM_INFO, 218172674);
         m_creature->SetByteValue(UNIT_FIELD_BYTES_2, 0, SHEATH_STATE_MELEE);
+    }
+
+    void DamageTaken(Unit *done_by, uint32 &damage)
+    {
+        if (!done_by)
+            return;
+
+        if (m_creature->GetDistance2d(spawn_x, spawn_y)>35.0)
+            return;
+
+        if (done_by->GetTypeId() != TYPEID_PLAYER) 
+        {
+            Unit* owner = done_by->GetCharmerOrOwner();
+            if (!owner)
+               return;
+            else if (owner->GetTypeId() != TYPEID_PLAYER)
+               return;
+        }
     }
 
     void Aggro(Unit *who)

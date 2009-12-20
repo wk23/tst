@@ -114,6 +114,8 @@ struct MANGOS_DLL_DECL boss_brutallusAI : public ScriptedAI
             Unit* owner = done_by->GetCharmerOrOwner();
             if (!owner)
                return;
+            else if (owner->GetTypeId() != TYPEID_PLAYER)
+               return;
         }
     }
 

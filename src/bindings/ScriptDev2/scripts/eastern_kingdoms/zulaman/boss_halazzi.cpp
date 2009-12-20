@@ -115,6 +115,12 @@ struct MANGOS_DLL_DECL boss_halazziAI : public ScriptedAI
 
         Phase = PHASE_NONE;
         //EnterPhase(PHASE_LYNX);
+        if (pInstance)
+        {
+            if (Creature* pSpiritLynx = pInstance->instance->GetCreature(MOB_SPIRIT_LYNX))
+                pSpiritLynx->ForcedDespawn();
+        }
+
     }
 
     void Aggro(Unit *who)
@@ -139,6 +145,18 @@ struct MANGOS_DLL_DECL boss_halazziAI : public ScriptedAI
     {
         if(damage >= m_creature->GetHealth() && Phase != PHASE_ENRAGE)
             damage = 0;
+
+        if (!done_by)
+            return;
+
+        if (done_by->GetTypeId() != TYPEID_PLAYER) 
+        {
+            Unit* owner = done_by->GetCharmerOrOwner();
+            if (!owner)
+               return;
+            else if (owner->GetTypeId() != TYPEID_PLAYER)
+               return;
+        }
     }
 
     void SpellHit(Unit*, const SpellEntry *spell)

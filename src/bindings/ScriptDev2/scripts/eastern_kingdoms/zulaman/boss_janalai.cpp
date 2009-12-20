@@ -120,12 +120,20 @@ struct MANGOS_DLL_DECL boss_janalaiAI : public ScriptedAI
 
     bool isFlameBreathing;
 
-    uint64 FireBombGUIDs[40];    
+    uint64 FireBombGUIDs[40];   
+
+    float spawn_x;
+    float spawn_y;
+    float spawn_z; 
 
     void Reset()
     {
         if (pInstance)
             pInstance->SetData(DATA_JANALAIEVENT, NOT_STARTED);
+
+        spawn_x=m_creature->GetPositionX();
+        spawn_y=m_creature->GetPositionY();
+        spawn_z=m_creature->GetPositionZ();
 
         FireBreathTimer = 8000;
         BombTimer = 30000;
@@ -146,6 +154,25 @@ struct MANGOS_DLL_DECL boss_janalaiAI : public ScriptedAI
             FireBombGUIDs[i] = 0;
 
         HatchAllEggs(1);
+    }
+
+    void DamageTaken(Unit *done_by, uint32 &damage)
+    {
+        if (!done_by)
+            return;
+
+        if (m_creature->GetDistance2d(spawn_x, spawn_y)>60.0)
+            return;
+
+        if (done_by != m_creature) 
+        if (done_by->GetTypeId() != TYPEID_PLAYER) 
+        {
+            Unit* owner = done_by->GetCharmerOrOwner();
+            if (!owner)
+               return;
+            else if (owner->GetTypeId() != TYPEID_PLAYER)
+               return;
+        }
     }
 
     void JustDied(Unit* Killer)

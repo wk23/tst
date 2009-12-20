@@ -81,10 +81,18 @@ struct MANGOS_DLL_DECL boss_nalorakkAI : public ScriptedAI
 
     bool inBearForm;
 
+    float spawn_x;
+    float spawn_y;
+    float spawn_z;
+
     void Reset()
     {
         if(pInstance)
             pInstance->SetData(DATA_NALORAKKEVENT, NOT_STARTED);
+
+        spawn_x=m_creature->GetPositionX();
+        spawn_y=m_creature->GetPositionY();
+        spawn_z=m_creature->GetPositionZ();
 
         Surge_Timer = 15000 + rand()%5000;
         BrutalSwipe_Timer = 7000 + rand()%5000;
@@ -97,6 +105,24 @@ struct MANGOS_DLL_DECL boss_nalorakkAI : public ScriptedAI
 
         inBearForm = false;
         m_creature->SetUInt32Value(UNIT_VIRTUAL_ITEM_SLOT_DISPLAY + 1, 5122);
+    }
+
+    void DamageTaken(Unit *done_by, uint32 &damage)
+    {
+        if (!done_by)
+            return;
+
+        if (m_creature->GetDistance2d(spawn_x, spawn_y)>60.0)
+            return;
+
+        if (done_by->GetTypeId() != TYPEID_PLAYER) 
+        {
+            Unit* owner = done_by->GetCharmerOrOwner();
+            if (!owner)
+               return;
+            else if (owner->GetTypeId() != TYPEID_PLAYER)
+               return;
+        }
     }
 
     void Aggro(Unit *who)

@@ -106,6 +106,21 @@ struct MANGOS_DLL_DECL boss_high_king_maulgarAI : public ScriptedAI
         m_bPhase2               = false;
     }
 
+    void DamageTaken(Unit *done_by, uint32 &damage)
+    {
+        if (!done_by)
+            return;
+
+        if (done_by->GetTypeId() != TYPEID_PLAYER) 
+        {
+            Unit* owner = done_by->GetCharmerOrOwner();
+            if (!owner)
+               return;
+            else if (owner->GetTypeId() != TYPEID_PLAYER)
+               return;
+        }
+    }
+
     void JustReachedHome()
     {
         for (uint8 i = 0; i < MAX_COUNCIL; ++i)
@@ -266,6 +281,21 @@ struct MANGOS_DLL_DECL Council_Base_AI : public ScriptedAI
     }
 
     ScriptedInstance* m_pInstance;
+
+    void DamageTaken(Unit *done_by, uint32 &damage)
+    {
+        if (!done_by)
+            return;
+
+        if (done_by->GetTypeId() != TYPEID_PLAYER) 
+        {
+            Unit* owner = done_by->GetCharmerOrOwner();
+            if (!owner)
+               return;
+            else if (owner->GetTypeId() != TYPEID_PLAYER)
+               return;
+        }
+    }
 
     void JustReachedHome()
     {

@@ -107,7 +107,13 @@ struct MANGOS_DLL_DECL boss_akilzonAI : public ScriptedAI
 
         isRaining = false;
 
-        DespawnSummons(MOB_SOARING_EAGLE);
+        //DespawnSummons(MOB_SOARING_EAGLE);
+        if (pInstance)
+        {
+            if (Creature* pEAGLE = pInstance->instance->GetCreature(MOB_SOARING_EAGLE))
+                pEAGLE->ForcedDespawn();
+        }
+
         SetWeather(WEATHER_STATE_FINE, 0.0f);        
     }
 
@@ -118,6 +124,21 @@ struct MANGOS_DLL_DECL boss_akilzonAI : public ScriptedAI
         m_creature->SetInCombatWithZone();
         if(pInstance)
             pInstance->SetData(DATA_AKILZONEVENT, IN_PROGRESS);
+    }
+
+    void DamageTaken(Unit *done_by, uint32 &damage)
+    {
+        if (!done_by)
+            return;
+
+        if (done_by->GetTypeId() != TYPEID_PLAYER) 
+        {
+            Unit* owner = done_by->GetCharmerOrOwner();
+            if (!owner)
+               return;
+            else if (owner->GetTypeId() != TYPEID_PLAYER)
+               return;
+        }
     }
 
     void JustDied(Unit* Killer)
@@ -146,30 +167,6 @@ struct MANGOS_DLL_DECL boss_akilzonAI : public ScriptedAI
 
     void DespawnSummons(uint32 entry)
     {
-        std::list<Creature*> templist;
-        float x, y, z;
-        m_creature->GetPosition(x, y, z);
-
-        {
-            CellPair pair(MaNGOS::ComputeCellPair(x, y));
-            Cell cell(pair);
-            cell.data.Part.reserved = ALL_DISTRICT;
-            cell.SetNoCreate();
-
-            AllCreaturesOfEntryInRange check(m_creature, entry, 100);
-            MaNGOS::CreatureListSearcher<AllCreaturesOfEntryInRange> searcher(templist, check);
-
-            TypeContainerVisitor<MaNGOS::CreatureListSearcher<AllCreaturesOfEntryInRange>, GridTypeMapContainer> cSearcher(searcher);
-
-            CellLock<GridReadGuard> cell_lock(cell, pair);
-            cell_lock->Visit(cell_lock, cSearcher, *(m_creature->GetMap()));
-        }
-
-        for(std::list<Creature*>::iterator i = templist.begin(); i != templist.end(); ++i)
-        {
-            (*i)->SetVisibility(VISIBILITY_OFF);
-            (*i)->setDeathState(JUST_DIED);
-        }
     }
 
     Player* SelectRandomPlayer(float range = 0.0f, bool alive = true)

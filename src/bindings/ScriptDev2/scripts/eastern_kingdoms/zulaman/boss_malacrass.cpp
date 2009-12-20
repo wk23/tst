@@ -185,7 +185,14 @@ struct MANGOS_DLL_DECL boss_hexlord_addAI : public ScriptedAI
 
     void Reset() {}
 
-    void Aggro(Unit* who) {m_creature->SetInCombatWithZone();}
+    void Aggro(Unit* who)
+    {
+        m_creature->SetInCombatWithZone();
+        if (who)
+        if (Creature* pBoss = (Creature*)Unit::GetUnit(*m_creature, pInstance->GetData64(DATA_MALACRASS)))
+            if (!pBoss->getVictim() && pBoss->isAlive())
+               pBoss->AI()->AttackStart(who);
+    }
 
     void UpdateAI(const uint32 diff)
     {
@@ -224,6 +231,10 @@ struct MANGOS_DLL_DECL boss_hex_lord_malacrassAI : public ScriptedAI
 
     Unit* SoulDrainTarget;
 
+    float spawn_x;
+    float spawn_y;
+    float spawn_z;
+
     void Reset()
     {
         if(pInstance)
@@ -235,11 +246,33 @@ struct MANGOS_DLL_DECL boss_hex_lord_malacrassAI : public ScriptedAI
         PlayerAbility_Timer = 99999;
         CheckAddState_Timer = 5000;
 
+        spawn_x=m_creature->GetPositionX();
+        spawn_y=m_creature->GetPositionY();
+        spawn_z=m_creature->GetPositionZ();
+
         SpawnAdds();
 
         m_creature->SetUInt32Value(UNIT_VIRTUAL_ITEM_SLOT_DISPLAY, 46916);
         m_creature->SetUInt32Value(UNIT_VIRTUAL_ITEM_INFO, 50268674);
         m_creature->SetByteValue(UNIT_FIELD_BYTES_2, 0, SHEATH_STATE_MELEE );
+    }
+
+    void DamageTaken(Unit *done_by, uint32 &damage)
+    {
+        if (!done_by)
+            return;
+
+        if (m_creature->GetDistance2d(spawn_x, spawn_y)>45.0)
+            return;
+
+        if (done_by->GetTypeId() != TYPEID_PLAYER) 
+        {
+            Unit* owner = done_by->GetCharmerOrOwner();
+            if (!owner)
+               return;
+            else if (owner->GetTypeId() != TYPEID_PLAYER)
+               return;
+        }
     }
 
     void Aggro(Unit* who)
@@ -251,15 +284,19 @@ struct MANGOS_DLL_DECL boss_hex_lord_malacrassAI : public ScriptedAI
         m_creature->MonsterYell(YELL_AGGRO, LANG_UNIVERSAL, NULL);
         DoPlaySoundToSet(m_creature, SOUND_YELL_AGGRO);
 
+        if (m_creature->getVictim())
+           AddsAttack(m_creature->getVictim());
+    }
+
+    void AddsAttack(Unit* pWho)
+    {
+        if (pWho)
         for(uint8 i = 0; i < 4; ++i)
         {
-            Unit* Temp = Unit::GetUnit((*m_creature),AddGUID[i]);
-            if(Temp && Temp->isAlive())
-                ((Creature*)Temp)->AI()->AttackStart(m_creature->getVictim());
-            else
+            if (Creature* pAdd = (Creature*)Unit::GetUnit(*m_creature, AddGUID[i]))
             {
-                EnterEvadeMode();
-                break;
+                if (pAdd->isAlive() && !pAdd->getVictim())
+                    pAdd->AI()->AttackStart(pWho);
             }
         }
     }

@@ -179,6 +179,8 @@ struct MANGOS_DLL_DECL boss_sacrolashAI : public ScriptedAI
             Unit* owner = done_by->GetCharmerOrOwner();
             if (!owner)
                return;
+            else if (owner->GetTypeId() != TYPEID_PLAYER)
+               return;
         }
     }
 
@@ -471,6 +473,8 @@ struct MANGOS_DLL_DECL boss_alythessAI : public Scripted_NoMovementAI
         {
             Unit* owner = done_by->GetCharmerOrOwner();
             if (!owner)
+               return;
+            else if (owner->GetTypeId() != TYPEID_PLAYER)
                return;
         }
     }
