@@ -39,22 +39,24 @@ EndContentData */
 
 struct MANGOS_DLL_DECL npc_forest_frogAI : public ScriptedAI
 {
-    npc_forest_frogAI(Creature* pCreature) : ScriptedAI(pCreature)
+    npc_forest_frogAI(Creature* c) : ScriptedAI(c)
     {
-        m_pInstance = (ScriptedInstance*)pCreature->GetInstanceData();
+        pInstance = ((ScriptedInstance*)c->GetInstanceData());
         Reset();
     }
 
-    ScriptedInstance* m_pInstance;
+    ScriptedInstance *pInstance;
 
     void Reset() { }
 
+    void Aggro(Unit *who) { }
+
     void DoSpawnRandom()
     {
-        if (m_pInstance)
+        if( pInstance )
         {
             uint32 cEntry = 0;
-            switch(urand(0, 10))
+            switch(rand()%11)
             {
                 case 0: cEntry = 24024; break;              //Kraz
                 case 1: cEntry = 24397; break;              //Mannuth
@@ -69,38 +71,101 @@ struct MANGOS_DLL_DECL npc_forest_frogAI : public ScriptedAI
                 case 10: cEntry = 24455; break;             //Hollee
             }
 
-            if (!m_pInstance->GetData(TYPE_RAND_VENDOR_1))
-                if (!urand(0, 9))
-                    cEntry = 24408;                         //Gunter
+            if( !pInstance->GetData(TYPE_RAND_VENDOR_1) )
+                if(rand()%10 == 1) cEntry = 24408;          //Gunter
+            if( !pInstance->GetData(TYPE_RAND_VENDOR_2) )
+                if(rand()%10 == 1) cEntry = 24409;          //Kyren
 
-            if (!m_pInstance->GetData(TYPE_RAND_VENDOR_2))
-                if (!urand(0, 9))
-                    cEntry = 24409;                         //Kyren
+            if( cEntry ) m_creature->UpdateEntry(cEntry);
 
-            if (cEntry) m_creature->UpdateEntry(cEntry);
-
-            if (cEntry == 24408) m_pInstance->SetData(TYPE_RAND_VENDOR_1,DONE);
-            if (cEntry == 24409) m_pInstance->SetData(TYPE_RAND_VENDOR_2,DONE);
+            if( cEntry == 24408) pInstance->SetData(TYPE_RAND_VENDOR_1,DONE);
+            if( cEntry == 24409) pInstance->SetData(TYPE_RAND_VENDOR_2,DONE);
         }
     }
 
     void SpellHit(Unit *caster, const SpellEntry *spell)
     {
-        if (spell->Id == SPELL_REMOVE_AMANI_CURSE && caster->GetTypeId() == TYPEID_PLAYER && m_creature->GetEntry() == ENTRY_FOREST_FROG)
+        if( spell->Id == SPELL_REMOVE_AMANI_CURSE && caster->GetTypeId() == TYPEID_PLAYER && m_creature->GetEntry() == ENTRY_FOREST_FROG )
         {
             //increase or decrease chance of mojo?
-            if (!urand(0, 49))
-                DoCast(caster,SPELL_PUSH_MOJO,true);
-            else
-                DoSpawnRandom();
+            if( rand()%99 == 50 ) DoCast(caster,SPELL_PUSH_MOJO,true);
+            else DoSpawnRandom();
         }
     }
 };
-CreatureAI* GetAI_npc_forest_frog(Creature* pCreature)
+CreatureAI* GetAI_npc_forest_frog(Creature *_Creature)
 {
-    return new npc_forest_frogAI(pCreature);
+    return new npc_forest_frogAI (_Creature);
 }
 
+/*######
+## npc_zulaman_hostage
+######*/
+
+#define GOSSIP_HOSTAGE1        "I am glad to help you."
+
+static uint32 HostageInfo[] = {23790, 23999, 24024, 24001};
+
+struct MANGOS_DLL_DECL npc_zulaman_hostageAI : public ScriptedAI
+{
+    npc_zulaman_hostageAI(Creature *c) : ScriptedAI(c) {IsLoot = false;}
+    bool IsLoot;
+    uint64 PlayerGUID;
+    void Reset() {}
+    void Aggro(Unit *who) {}
+    /*void JustDied(Unit *)
+    {
+        Player* player = (Player*)Unit::GetUnit(*m_creature, PlayerGUID);
+        if(player) player->SendLoot(m_creature->GetGUID(), LOOT_CORPSE);
+    }*/
+    void UpdateAI(const uint32 diff)
+    {
+        if(IsLoot) m_creature->CastSpell(m_creature, 7, false);
+    }
+};
+
+bool GossipHello_npc_zulaman_hostage(Player* player, Creature* _Creature)
+{
+    player->ADD_GOSSIP_ITEM(0, GOSSIP_HOSTAGE1, GOSSIP_SENDER_MAIN, GOSSIP_ACTION_INFO_DEF + 1);
+    player->SEND_GOSSIP_MENU(player->GetGossipTextId(_Creature), _Creature->GetGUID());
+
+    return true;
+}
+
+bool GossipSelect_npc_zulaman_hostage(Player* player, Creature* _Creature, uint32 sender, uint32 action)
+{
+    if(action == GOSSIP_ACTION_INFO_DEF + 1)
+        player->CLOSE_GOSSIP_MENU();
+
+    if(!_Creature->HasFlag(UNIT_NPC_FLAGS, UNIT_NPC_FLAG_GOSSIP))
+        return true;
+    _Creature->RemoveFlag(UNIT_NPC_FLAGS, UNIT_NPC_FLAG_GOSSIP);
+
+    ScriptedInstance* pInstance = ((ScriptedInstance*)_Creature->GetInstanceData());
+    if(pInstance)
+    {
+        uint8 progress = pInstance->GetData(DATA_CHESTLOOTED);
+        pInstance->SetData(DATA_CHESTLOOTED, 0);
+        float x, y, z;
+        _Creature->GetPosition(x, y, z);
+        //Creature* summon = _Creature->SummonCreature(HostageInfo[progress], x, y, z, 0, TEMPSUMMON_TIMED_DESPAWN, 300000);
+        Creature* summon = _Creature->SummonCreature(HostageInfo[progress], x-2, y, z, 0, TEMPSUMMON_DEAD_DESPAWN, 0);
+        if(summon)
+        {
+            ((npc_zulaman_hostageAI*)summon->AI())->PlayerGUID = player->GetGUID();
+            ((npc_zulaman_hostageAI*)summon->AI())->IsLoot = true;
+            summon->SetDisplayId(10056);
+            summon->RemoveFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_NON_ATTACKABLE);
+            summon->RemoveFlag(UNIT_NPC_FLAGS, UNIT_NPC_FLAG_GOSSIP);
+        }
+    }
+    return true;
+}
+
+CreatureAI* GetAI_npc_zulaman_hostage(Creature *_Creature)
+{
+    return new npc_zulaman_hostageAI(_Creature);
+}
 /*######
 ## npc_harrison_jones_za
 ######*/
@@ -120,15 +185,16 @@ struct MANGOS_DLL_DECL npc_harrison_jones_zaAI : public npc_escortAI
 {
     npc_harrison_jones_zaAI(Creature* pCreature) : npc_escortAI(pCreature)
     {
-        m_pInstance = (ScriptedInstance*)pCreature->GetInstanceData();
+        pInstance = ((ScriptedInstance*)pCreature->GetInstanceData());
         Reset();
     }
 
-    ScriptedInstance* m_pInstance;
+    ScriptedInstance* pInstance;
+    bool  IsOnHold;
 
     void WaypointReached(uint32 i)
     {
-        if (!m_pInstance)
+        if (!pInstance)
             return;
 
         switch(i)
@@ -136,38 +202,43 @@ struct MANGOS_DLL_DECL npc_harrison_jones_zaAI : public npc_escortAI
             case 1:
                 DoScriptText(SAY_AT_GONG, m_creature);
 
-                if (GameObject* pEntranceDoor = m_pInstance->instance->GetGameObject(m_pInstance->GetData64(DATA_GO_GONG)))
+                if (GameObject* pEntranceDoor = pInstance->instance->GetGameObject(pInstance->GetData64(DATA_GO_GONG)))
                     pEntranceDoor->RemoveFlag(GAMEOBJECT_FLAGS, GO_FLAG_UNK1);
 
                 //Start bang gong for 2min
                 m_creature->CastSpell(m_creature, SPELL_BANGING_THE_GONG, false);
-                SetEscortPaused(true);
+                IsOnHold = true;
                 break;
             case 3:
                 DoScriptText(SAY_OPEN_ENTRANCE, m_creature);
                 break;
            case 4:
-                m_pInstance->SetData(TYPE_EVENT_RUN,IN_PROGRESS);
+                pInstance->SetData(TYPE_EVENT_RUN,IN_PROGRESS);
                 //TODO: Spawn group of Amani'shi Savage and make them run to entrance
                 break;
         }
     }
 
-    void Reset() { }
+    void Reset() {  IsOnHold = false;}
 
     void StartEvent()
     {
         DoScriptText(SAY_START, m_creature);
-        Start(false,false);
+        Start(false,true,false,0);
     }
 
     void SetHoldState(bool bOnHold)
     {
-        SetEscortPaused(bOnHold);
+        IsOnHold = bOnHold;
 
         //Stop banging gong if still
-        if (m_pInstance && m_pInstance->GetData(TYPE_EVENT_RUN) == SPECIAL && m_creature->HasAura(SPELL_BANGING_THE_GONG))
+        if (pInstance && pInstance->GetData(TYPE_EVENT_RUN) == SPECIAL && m_creature->HasAura(SPELL_BANGING_THE_GONG))
             m_creature->RemoveAurasDueToSpell(SPELL_BANGING_THE_GONG);
+    }
+
+    void UpdateAI(const uint32 diff)
+    {
+        npc_escortAI::UpdateAI(diff);
     }
 };
 
@@ -234,6 +305,13 @@ void AddSC_zulaman()
     newscript = new Script;
     newscript->Name = "npc_forest_frog";
     newscript->GetAI = &GetAI_npc_forest_frog;
+    newscript->RegisterSelf();
+
+    newscript = new Script;
+    newscript->Name = "npc_zulaman_hostage";
+    newscript->GetAI = &GetAI_npc_zulaman_hostage;
+    newscript->pGossipHello = GossipHello_npc_zulaman_hostage;
+    newscript->pGossipSelect = GossipSelect_npc_zulaman_hostage;
     newscript->RegisterSelf();
 
     newscript = new Script;
