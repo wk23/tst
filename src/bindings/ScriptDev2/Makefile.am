@@ -423,6 +423,8 @@ scripts/outland/coilfang_reservoir/steam_vault/boss_warlord_kalithresh.cpp \
 scripts/outland/coilfang_reservoir/steam_vault/instance_steam_vault.cpp \
 scripts/outland/coilfang_reservoir/steam_vault/steam_vault.h \
 scripts/outland/coilfang_reservoir/underbog/boss_hungarfen.cpp \
+scripts/outland/coilfang_reservoir/underbog/boss_the_black_stalker.cpp \
+scripts/outland/coilfang_reservoir/underbog/boss_swamplord_muselek.cpp \
 scripts/outland/gruuls_lair/boss_gruul.cpp \
 scripts/outland/gruuls_lair/boss_high_king_maulgar.cpp \
 scripts/outland/gruuls_lair/gruuls_lair.h \

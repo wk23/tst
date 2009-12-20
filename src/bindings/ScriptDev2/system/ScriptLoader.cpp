@@ -226,7 +226,6 @@ extern void AddSC_boss_skeram();
 extern void AddSC_boss_twinemperors();
 extern void AddSC_mob_anubisath_sentinel();
 extern void AddSC_instance_temple_of_ahnqiraj();
-extern void AddSC_instance_wailing_caverns();
 extern void AddSC_zulfarrak();                              //zulfarrak
 
 extern void AddSC_ashenvale();
@@ -352,6 +351,8 @@ extern void AddSC_boss_mekgineer_steamrigger();
 extern void AddSC_boss_warlord_kalithresh();
 extern void AddSC_instance_steam_vault();
 extern void AddSC_boss_hungarfen();                         //CR, Underbog
+extern void AddSC_boss_the_black_stalker();
+extern  void AddSC_boss_swamplord_muselek();
 extern void AddSC_boss_gruul();                             //gruuls_lair
 extern void AddSC_boss_high_king_maulgar();
 extern void AddSC_instance_gruuls_lair();
@@ -620,7 +621,6 @@ void AddScripts()
     AddSC_boss_twinemperors();
     AddSC_mob_anubisath_sentinel();
     AddSC_instance_temple_of_ahnqiraj();
-    AddSC_instance_wailing_caverns();
     AddSC_zulfarrak();                                      //zulfarrak
 
     AddSC_ashenvale();
@@ -746,6 +746,8 @@ void AddScripts()
     AddSC_boss_warlord_kalithresh();
     AddSC_instance_steam_vault();
     AddSC_boss_hungarfen();                                 //CR, Underbog
+    AddSC_boss_the_black_stalker();
+    AddSC_boss_swamplord_muselek();
     AddSC_boss_gruul();                                     //gruuls_lair
     AddSC_boss_high_king_maulgar();
     AddSC_instance_gruuls_lair();
