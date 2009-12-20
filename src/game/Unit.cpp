@@ -4704,6 +4704,25 @@ bool Unit::HandleDummyAuraProc(Unit *pVictim, uint32 damage, Aura* triggeredByAu
                     triggered_spell_id = 26654;
                     break;
                 }
+                //sunwell eredar twins
+                case 45248: 
+                case 45329: 
+                case 45256: 
+                case 45270:
+                {
+                    // Need remove  aura dark flame
+                    if (HasAura(45348,0))
+                       RemoveAurasDueToSpell(45348);
+                    return true;
+                }
+                case 45342:
+                case 46771:
+                {
+                    // Need remove  aura dark touch
+                    if (HasAura(45347,0))
+                       RemoveAurasDueToSpell(45347);
+                    return true;
+                }
                 // Unstable Power
                 case 24658:
                 {
