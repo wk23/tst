@@ -295,13 +295,13 @@ struct MANGOS_DLL_DECL npc_time_riftAI : public ScriptedAI
         //normalize Z-level if we can, if rift is not at ground level.
         z = std::max(m_creature->GetMap()->GetHeight(x, y, MAX_HEIGHT), m_creature->GetMap()->GetWaterLevel(x, y));
 
-        Unit *Summon = m_creature->SummonCreature(creature_entry,x,y,z,m_creature->GetOrientation(),
+        Creature *Summon = m_creature->SummonCreature(creature_entry,x,y,z,m_creature->GetOrientation(),
             TEMPSUMMON_TIMED_DESPAWN_OUT_OF_COMBAT,30000);
 
         if (Summon)
         {
-            if (Unit *temp = Unit::GetUnit(*m_creature, m_pInstance->GetData64(DATA_MEDIVH)))
-                Summon->AddThreat(temp);
+            if (Unit *temp = Unit::GetUnit(*m_creature, m_pInstance->GetData64(DATA_MEDIVH))) {
+                Summon->AddThreat(temp,0.0f); Summon->SetActiveObjectState(true); }
         }
     }
 
@@ -379,9 +379,9 @@ bool GossipHello_npc_saat(Player* pPlayer, Creature* pCreature)
     return true;
 }
 
-bool GossipSelect_npc_saat(Player* pPlayer, Creature* pCreature, uint32 uiSender, uint32 uiAction)
+bool GossipSelect_npc_saat(Player* pPlayer, Creature* pCreature, uint32 sender, uint32 action)
 {
-    if (uiAction == GOSSIP_ACTION_INFO_DEF+1)
+    if (action == GOSSIP_ACTION_INFO_DEF+1)
     {
         pPlayer->CLOSE_GOSSIP_MENU();
         pCreature->CastSpell(pPlayer,SPELL_CHRONO_BEACON,false);
