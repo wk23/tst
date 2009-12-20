@@ -1503,7 +1503,8 @@ void Aura::TriggerSpell()
                     // Doomfire
                     case 31944:
                     {
-                        int32 damage = m_modifier.m_amount * ((float)(GetAuraDuration() + m_modifier.periodictime) / GetAuraMaxDuration());
+                        //int32 damage = m_modifier.m_amount * ((float)(GetAuraDuration() + m_modifier.periodictime) / GetAuraMaxDuration());
+                        int32 damage = ((m_duration+m_modifier.periodictime)/m_modifier.periodictime)*150;
                         target->CastCustomSpell(target, 31969, &damage, NULL, NULL, true, NULL, this, casterGUID);
                         return;
                     }
@@ -6330,6 +6331,15 @@ void Aura::PeriodicTick()
         case SPELL_AURA_PERIODIC_DUMMY:
         {
             PeriodicDummyTick();
+            break;
+        }
+        case SPELL_AURA_PERIODIC_TRIGGER_SPELL:
+        {
+            uint32 pdamage;
+            //pdamage = m_modifier.m_amount;
+            // 31944 Doomfire ()  damage-per-tick calculation
+            if (GetSpellProto()->SpellFamilyName==SPELLFAMILY_GENERIC && GetSpellProto()->SpellIconID==937)
+               pdamage = (m_duration/m_modifier.periodictime)*150;
             break;
         }
         default:
