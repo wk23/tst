@@ -6273,21 +6273,20 @@ bool Unit::HandleProcTriggerSpell(Unit *pVictim, uint32 damage, Aura* triggeredB
                 // Lightning Capacitor
                 else if (auraSpellInfo->Id==37657)
                 {
-                    if(!pVictim || !pVictim->isAlive())
+                    if (!pVictim || !pVictim->isAlive())
                         return false;
                     // stacking
                     CastSpell(this, 37658, true, NULL, triggeredByAura);
 
-             // counting
-             uint32 count = 0;
-             AuraList const& dummyAura = GetAurasByType(SPELL_AURA_DUMMY);
-             for(AuraList::const_iterator itr = dummyAura.begin(); itr != dummyAura.end(); ++itr)
-                 if((*itr)->GetId()==37658)
-                     ++count;
-             // release at 3 aura in stack (cont contain in basepoint of trigger aura)
-             if(count < triggerAmount)
-                 return false;
-
+                    // counting
+                    uint32 count = 0;
+                    AuraList const& dummyAura = GetAurasByType(SPELL_AURA_DUMMY);
+                    for(AuraList::const_iterator itr = dummyAura.begin(); itr != dummyAura.end(); ++itr)
+                    if ((*itr)->GetId()==37658)
+                       count=(*itr)->m_stackAmount;
+                    // release at 3 aura in stack (cont contain in basepoint of trigger aura)
+                    if (count <3)
+                       return false;
                     RemoveAurasDueToSpell(37658);
                     trigger_spell_id = 37661;
                     target = pVictim;
