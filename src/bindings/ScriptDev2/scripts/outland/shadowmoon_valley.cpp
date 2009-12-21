@@ -142,7 +142,6 @@ struct MANGOS_DLL_DECL mob_mature_netherwing_drakeAI : public ScriptedAI
                             m_creature->GetMotionMaster()->MovePoint(POINT_ID, pGo->GetPositionX(), pGo->GetPositionY(), pGo->GetPositionZ());
                         }
                     }
-                    //bCanEat = false;
                 }
                 if (bIsReach)
                 {
@@ -154,13 +153,10 @@ struct MANGOS_DLL_DECL mob_mature_netherwing_drakeAI : public ScriptedAI
                     if (Player* pPlr = (Player*)Unit::GetUnit((*m_creature), uiPlayerGUID))
                     {
                         pPlr->KilledMonsterCredit(NPC_EVENT_PINGER, m_creature->GetGUID());
-                        //pPlr->CombatStop();
                     }
 
                     Reset();
                     m_creature->GetMotionMaster()->Clear();
-                    //m_creature->CombatStop();
-                    //m_creature->CombatStopWithPets(true);
                 }
             EatTimer = 1000;
             }
