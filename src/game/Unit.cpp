@@ -3561,7 +3561,7 @@ bool Unit::AddAura(Aura *Aur)
     {
         // passive and persistent auras can stack with themselves any number of times
         if (!Aur->IsPassive() && !Aur->IsPersistent())
-       if(Aur->GetId() != 34123)//tree of life heal bonus
+        //if(Aur->GetId() != 34123)//tree of life heal bonus
         {
             // replace aura if next will > spell StackAmount
             if(aurSpellInfo->StackAmount)
