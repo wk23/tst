@@ -106,6 +106,8 @@ World::World()
     m_resultQueue = NULL;
     m_NextDailyQuestReset = 0;
     m_NextInstReset = time(NULL);
+    m_NextAutoArenaDistributionTime = 0;
+    m_PrevAutoArenaDistributionTime = 0;
 
     m_defaultDbcLocale = LOCALE_enUS;
     m_availableDbcLocaleMask = 0;
@@ -962,6 +964,9 @@ void World::LoadConfigSettings(bool reload)
     m_configs[CONFIG_ARENA_AUTO_DISTRIBUTE_POINTS] = sConfig.GetBoolDefault("Arena.AutoDistributePoints", false);
     m_configs[CONFIG_ARENA_AUTO_DISTRIBUTE_INTERVAL_DAYS] = sConfig.GetIntDefault("Arena.AutoDistributeInterval", 7);
 
+    m_configs[CONFIG_ARENA_DAY] = sConfig.GetIntDefault("Arena.AutoDistributeDay", 3);
+    m_configs[CONFIG_ARENA_HOUR] = sConfig.GetIntDefault("Arena.AutoDistributeHour", 4);
+
     m_configs[CONFIG_BATTLEGROUND_PREMATURE_FINISH_TIMER] = sConfig.GetIntDefault("BattleGround.PrematureFinishTimer", 0);
     m_configs[CONFIG_INSTANT_LOGOUT] = sConfig.GetIntDefault("InstantLogout", SEC_MODERATOR);
 
@@ -1144,6 +1149,8 @@ void World::SetInitialWorldSettings()
     sInstanceSaveMgr.PackInstances();
 
     InitInstResetTime();
+
+    InitArenaDistribution();
 
     sLog.outString();
     sLog.outString( "Loading Localization strings..." );
@@ -1544,6 +1551,15 @@ void World::Update(uint32 diff)
     {
         sInstanceSaveMgr.CleanupInstances();
         m_NextInstReset += DAY;
+    }
+
+    /// Handle arena auto distribution time
+    if(m_gameTime > m_PrevAutoArenaDistributionTime)
+    {
+        sBattleGroundMgr.DistributeArenaPoints();
+        m_NextAutoArenaDistributionTime += sWorld.getConfig(CONFIG_ARENA_AUTO_DISTRIBUTE_INTERVAL_DAYS)*DAY;
+        m_PrevAutoArenaDistributionTime = m_NextAutoArenaDistributionTime;
+        CharacterDatabase.PExecute("UPDATE saved_variables set NextArenaPointDistributionTime = '"UI64FMTD"'", uint64(m_NextAutoArenaDistributionTime));
     }
 
     /// <ul><li> Handle auctions when the timer has passed
@@ -2818,6 +2834,37 @@ void World::InitInstResetTime()
 
     // plan next reset time
     m_NextInstReset = (curTime >= curDayResetTime) ? curDayResetTime + DAY : curDayResetTime;
+}
+
+void World::InitArenaDistribution()
+{
+    time_t curTime = time(NULL);
+    tm localTm = *localtime(&curTime);
+    localTm.tm_wday = sWorld.getConfig(CONFIG_ARENA_DAY);
+    localTm.tm_hour = sWorld.getConfig(CONFIG_ARENA_HOUR);
+    localTm.tm_min  = 0;
+    localTm.tm_sec  = 0;
+
+    // current day reset time
+    time_t curDayResetTime = mktime(&localTm);
+
+    // last reset time before current moment
+    time_t resetTime = (curTime < curDayResetTime) ? curDayResetTime - sWorld.getConfig(CONFIG_ARENA_AUTO_DISTRIBUTE_INTERVAL_DAYS)*DAY : curDayResetTime;
+
+    // plan next Arena Distribution Time
+    m_NextAutoArenaDistributionTime = (curTime >= curDayResetTime) ? curDayResetTime + sWorld.getConfig(CONFIG_ARENA_AUTO_DISTRIBUTE_INTERVAL_DAYS)*DAY : curDayResetTime;
+
+    QueryResult * result = CharacterDatabase.Query("SELECT NextArenaPointDistributionTime FROM saved_variables");
+    if(!result)
+    {
+        m_PrevAutoArenaDistributionTime = resetTime;
+        CharacterDatabase.DirectPExecute("INSERT INTO saved_variables (NextArenaPointDistributionTime) VALUES ('"UI64FMTD"')", uint64(m_NextAutoArenaDistributionTime));
+    }
+    else
+    {
+       m_PrevAutoArenaDistributionTime = time_t((*result)[0].GetUInt64());
+       delete result;
+    }
 }
 
 void World::SetPlayerLimit( int32 limit, bool needUpdate )
