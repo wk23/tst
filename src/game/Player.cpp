@@ -287,6 +287,9 @@ Player::Player (WorldSession *session): Unit(), m_reputationMgr(this)
     m_comboTarget = 0;
     m_comboPoints = 0;
 
+    m_comboPoints_finish = false;
+    m_comboPoints_finish_miss = false;
+
     m_usedTalentCount = 0;
 
     m_regenTimer = 0;
@@ -6647,6 +6650,10 @@ void Player::CastItemCombatSpell(Unit* Target, WeaponAttackType attType)
 
         // not allow proc extra attack spell at extra attack
         if( m_extraAttacks && IsSpellHaveEffect(spellInfo,SPELL_EFFECT_ADD_EXTRA_ATTACKS) )
+            return;
+
+        // not allow proc extra combo spell at extra attack
+        if( m_extraCombo && IsSpellHaveEffect(spellInfo, SPELL_EFFECT_ADD_COMBO_POINTS) )
             return;
 
         float chance = spellInfo->procChance;
@@ -17676,6 +17683,12 @@ void Player::SendComboPoints()
 
 void Player::AddComboPoints(Unit* target, int8 count)
 {
+    if(m_comboPoints_finish_miss)
+        return;
+
+    if(m_comboPoints_finish)
+        return;
+
     if(!count)
         return;
 
@@ -17719,7 +17732,22 @@ void Player::ClearComboPoints()
     if(Unit* target = ObjectAccessor::GetUnit(*this,m_comboTarget))
         target->RemoveComboPointHolder(GetGUIDLow());
 
+    Unit* target = ObjectAccessor::GetUnit(*this,m_comboTarget);
+
     m_comboTarget = 0;
+
+    if(m_comboPoints_finish)
+    {
+    RemoveSpellsCausingAura(SPELL_AURA_RETAIN_COMBO_POINTS);
+    m_comboPoints_finish = false;
+    if(target)
+    {
+        m_comboTarget = target->GetGUID();
+        target->RemoveComboPointHolder(GetGUIDLow());
+        target->AddComboPointHolder(GetGUIDLow());
+        AddComboPoints(target, 1);
+    }
+    }
 }
 
 void Player::SetGroup(Group *group, int8 subgroup)

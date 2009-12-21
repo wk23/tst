@@ -4840,8 +4840,13 @@ void Spell::EffectSanctuary(uint32 /*i*/)
 
 void Spell::EffectAddComboPoints(uint32 /*i*/)
 {
-    if(!unitTarget)
+    if(!unitTarget || !unitTarget->isAlive())
         return;
+
+    if( unitTarget->m_extraCombo)
+        return;
+
+    unitTarget->m_extraCombo = damage;
 
     if(m_caster->GetTypeId() != TYPEID_PLAYER)
         return;
