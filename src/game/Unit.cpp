@@ -2865,7 +2865,7 @@ uint32 Unit::GetDefenseSkillValue(Unit const* target) const
 float Unit::GetUnitDodgeChance() const
 {
     if(getVictim())
-    if(getVictim()->GetTypeId() == TYPEID_PLAYER && getVictim()->HasInArc(M_PI, this))
+    if(getVictim()->GetTypeId() == TYPEID_PLAYER && !getVictim()->HasInArc(M_PI, this))
         return 0.0f;
 
     if (IsNonMeleeSpellCasted(false))
@@ -2891,7 +2891,7 @@ float Unit::GetUnitDodgeChance() const
 float Unit::GetUnitParryChance() const
 {
     if(getVictim())
-    if(getVictim()->HasInArc(M_PI, this))
+    if(!getVictim()->HasInArc(M_PI, this))
         return 0.0f;
 
     if ( IsNonMeleeSpellCasted(false) || hasUnitState(UNIT_STAT_STUNNED))
@@ -2927,7 +2927,7 @@ float Unit::GetUnitParryChance() const
 float Unit::GetUnitBlockChance() const
 {
     if(getVictim())
-    if(getVictim()->HasInArc(M_PI, this))
+    if(!getVictim()->HasInArc(M_PI, this))
         return 0.0f;
 
     if ( IsNonMeleeSpellCasted(false) || hasUnitState(UNIT_STAT_STUNNED))
