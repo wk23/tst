@@ -3704,7 +3704,8 @@ SpellCastResult Spell::CheckCast(bool strict)
         for(uint8 j = 0; j < 3; ++j)
         {
             if( m_spellInfo->EffectImplicitTargetA[j] == TARGET_SCRIPT ||
-                m_spellInfo->Id == 33655 ||
+                (m_spellInfo->Id == 33655 && j == 0)  ||
+                (m_spellInfo->Id == 38439 && j == 1) ||
                 m_spellInfo->EffectImplicitTargetB[j] == TARGET_SCRIPT && m_spellInfo->EffectImplicitTargetA[j] != TARGET_SELF ||
                 m_spellInfo->EffectImplicitTargetA[j] == TARGET_SCRIPT_COORDINATES ||
                 m_spellInfo->EffectImplicitTargetB[j] == TARGET_SCRIPT_COORDINATES )
@@ -3778,7 +3779,6 @@ SpellCastResult Spell::CheckCast(bool strict)
 
                             CellLock<GridReadGuard> cell_lock(cell, p);
                             cell_lock->Visit(cell_lock, grid_creature_searcher, *m_caster->GetMap(), *m_caster, range);
-
                             if(p_Creature )
                             {
                                 creatureScriptTarget = p_Creature;
