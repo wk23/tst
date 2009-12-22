@@ -169,7 +169,6 @@ Unit::Unit()
     m_modAttackSpeedPct[RANGED_ATTACK] = 1.0f;
 
     m_extraAttacks = 0;
-    m_extraCombo = 0;
 
     m_state = 0;
     m_form = FORM_NONE;
@@ -2154,7 +2153,6 @@ void Unit::AttackerStateUpdate (Unit *pVictim, WeaponAttackType attType, bool ex
         return;                                             // ignore ranged case
 
     uint32 extraAttacks = m_extraAttacks;
-    uint32 extraCombo = m_extraCombo;
 
     // melee attack spell casted at main hand attack only
     if (attType == BASE_ATTACK && m_currentSpells[CURRENT_MELEE_SPELL])
@@ -2169,16 +2167,6 @@ void Unit::AttackerStateUpdate (Unit *pVictim, WeaponAttackType attType, bool ex
                 AttackerStateUpdate(pVictim, BASE_ATTACK, true);
                 if(m_extraAttacks > 0)
                     --m_extraAttacks;
-            }
-        }
-        // not recent extra combo only at any non extra attack (melee spell case)
-        if(extraCombo)
-        {
-            while(m_extraCombo)
-            {
-                //addcombo
-                if(m_extraCombo > 0)
-                    --m_extraCombo;
             }
         }
         return;
@@ -2211,16 +2199,6 @@ void Unit::AttackerStateUpdate (Unit *pVictim, WeaponAttackType attType, bool ex
             AttackerStateUpdate(pVictim, BASE_ATTACK, true);
             if(m_extraAttacks > 0)
                 --m_extraAttacks;
-        }
-    }
-
-    // extra combo only at any non extra combo (normal case)
-    if(extraCombo)
-    {
-        while(m_extraCombo)
-        {
-            if(m_extraCombo > 0)
-                --m_extraCombo;
         }
     }
 }
@@ -3546,7 +3524,7 @@ bool Unit::AddAura(Aura *Aur)
     {
         // passive and persistent auras can stack with themselves any number of times
         if (!Aur->IsPassive() && !Aur->IsPersistent())
-        //if(Aur->GetId() != 34123)//tree of life heal bonus
+       if(Aur->GetId() != 34123)//tree of life heal bonus
         {
             // replace aura if next will > spell StackAmount
             if(aurSpellInfo->StackAmount)
@@ -6382,10 +6360,6 @@ bool Unit::HandleProcTriggerSpell(Unit *pVictim, uint32 damage, Aura* triggeredB
     if( m_extraAttacks && IsSpellHaveEffect(triggerEntry, SPELL_EFFECT_ADD_EXTRA_ATTACKS) )
         return false;
 
-    // not allow proc extra combo spell at extra combo
-    if( m_extraCombo && IsSpellHaveEffect(triggerEntry, SPELL_EFFECT_ADD_COMBO_POINTS) )
-        return false;
-
     // Custom requirements (not listed in procEx) Warning! damage dealing after this
     // Custom triggered spells
     switch (auraSpellInfo->Id)
@@ -6494,17 +6468,6 @@ bool Unit::HandleProcTriggerSpell(Unit *pVictim, uint32 damage, Aura* triggeredB
         case 14189: // Seal Fate (Netherblade set)
         case 14157: // Ruthlessness
         {
-            if (GetTypeId() == TYPEID_PLAYER) 
-            {
-            if (roll_chance_i(triggeredByAura->GetSpellProto()->procChance))
-            {
-               if ( ((Player*)this)->GetFinishComboPoints() )
-                  return false;
-               ((Player*)this)->SetFinishComboPoints(true);
-            }
-            else
-               return false;
-            }
             // Need add combopoint AFTER finish movie (or they dropped in finish phase)
             break;
         }

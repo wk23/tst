@@ -2837,18 +2837,14 @@ void Spell::finish(bool ok)
                 if (ihit->missCondition != SPELL_MISS_NONE && ihit->targetGUID!=m_caster->GetGUID())
                 {
                     needDrop = false;
-                    ((Player*)m_caster)->SetFinishComboPointsMiss(true);
                     break;
                 }
             }
         }
-        if (needDrop )
-        {
-            ((Player*)m_caster)->SetFinishComboPointsMiss(false);
+        if (needDrop)
             ((Player*)m_caster)->ClearComboPoints();
-        }
     }
-    ((Player*)m_caster)->SetFinishComboPointsMiss(false);
+
     // call triggered spell only at successful cast (after clear combo points -> for add some if need)
     if(!m_TriggerSpells.empty())
         CastTriggerSpells();

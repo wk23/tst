@@ -855,7 +855,6 @@ class MANGOS_DLL_SPEC Unit : public WorldObject
         bool haveOffhandWeapon() const;
         bool canReachWithAttack(Unit *pVictim) const;
         uint32 m_extraAttacks;
-        uint32 m_extraCombo;
 
         void _addAttacker(Unit *pAttacker)                  // must be called only from Unit::Attack(Unit*)
         {
