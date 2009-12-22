@@ -1297,12 +1297,6 @@ Death.Bones.BattlegroundOrArena = 1
 #                         if automatic distribution is enabled
 #                         in days
 #             Default: 7 (weekly)
-# AutoDistributeDay: day for distribution
-#             Default: 3 (Wensday)
-# 0 - Воскресенье 1 - Понедельник for test, 3 - Среда for live
-#
-# AutoDistributeHour: day for distribution
-#             Default: 4 (morning)
 #
 ###################################################################################################################
 
@@ -1310,8 +1304,6 @@ Arena.MaxRatingDifference = 0
 Arena.RatingDiscardTimer = 60000
 Arena.AutoDistributePoints = 0
 Arena.AutoDistributeInterval = 7
-Arena.AutoDistributeDay = 3
-Arena.AutoDistributeHour = 4
 Arena.ArenaSeason.ID = 1
 Arena.ArenaSeason.InProgress = 1
 

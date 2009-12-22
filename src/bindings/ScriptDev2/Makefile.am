@@ -188,7 +188,6 @@ scripts/eastern_kingdoms/stratholme/stratholme.cpp \
 scripts/eastern_kingdoms/stratholme/stratholme.h \
 scripts/eastern_kingdoms/sunwell_plateau/boss_brutallus.cpp \
 scripts/eastern_kingdoms/sunwell_plateau/boss_kalecgos.cpp \
-scripts/eastern_kingdoms/sunwell_plateau/boss_eredar_twins.cpp \
 scripts/eastern_kingdoms/sunwell_plateau/instance_sunwell_plateau.cpp \
 scripts/eastern_kingdoms/sunwell_plateau/sunwell_plateau.h \
 scripts/eastern_kingdoms/uldaman/boss_ironaya.cpp \
@@ -257,13 +256,6 @@ scripts/kalimdor/caverns_of_time/hyjal/hyjal.h \
 scripts/kalimdor/caverns_of_time/hyjal/hyjalAI.cpp \
 scripts/kalimdor/caverns_of_time/hyjal/hyjalAI.h \
 scripts/kalimdor/caverns_of_time/hyjal/instance_hyjal.cpp \
-scripts/kalimdor/caverns_of_time/hyjal/boss_anetheron.cpp \
-scripts/kalimdor/caverns_of_time/hyjal/boss_azgalor.cpp \
-scripts/kalimdor/caverns_of_time/hyjal/boss_kazrogal.cpp \
-scripts/kalimdor/caverns_of_time/hyjal/boss_rage_winterchill.cpp \
-scripts/kalimdor/caverns_of_time/hyjal/def_hyjal.h \
-scripts/kalimdor/caverns_of_time/hyjal/hyjal_trash.cpp \
-scripts/kalimdor/caverns_of_time/hyjal/hyjal_trash.h \
 scripts/kalimdor/caverns_of_time/old_hillsbrad/boss_captain_skarloc.cpp \
 scripts/kalimdor/caverns_of_time/old_hillsbrad/boss_epoch_hunter.cpp \
 scripts/kalimdor/caverns_of_time/old_hillsbrad/boss_leutenant_drake.cpp \
@@ -424,8 +416,6 @@ scripts/outland/coilfang_reservoir/steam_vault/boss_warlord_kalithresh.cpp \
 scripts/outland/coilfang_reservoir/steam_vault/instance_steam_vault.cpp \
 scripts/outland/coilfang_reservoir/steam_vault/steam_vault.h \
 scripts/outland/coilfang_reservoir/underbog/boss_hungarfen.cpp \
-scripts/outland/coilfang_reservoir/underbog/boss_the_black_stalker.cpp \
-scripts/outland/coilfang_reservoir/underbog/boss_swamplord_muselek.cpp \
 scripts/outland/gruuls_lair/boss_gruul.cpp \
 scripts/outland/gruuls_lair/boss_high_king_maulgar.cpp \
 scripts/outland/gruuls_lair/gruuls_lair.h \

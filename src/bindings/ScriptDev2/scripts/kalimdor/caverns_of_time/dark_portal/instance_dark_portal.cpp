@@ -24,7 +24,7 @@ EndScriptData */
 #include "precompiled.h"
 #include "dark_portal.h"
 
-inline uint32 RandRiftBoss() { return ((rand()%2) ? NPC_RKEEP : NPC_RLORD); }
+inline uint32 RandRiftBoss() { return (urand(0, 1) ? NPC_RKEEP : NPC_RLORD); }
 
 float PortalLocation[4][4]=
 {
@@ -86,25 +86,11 @@ struct MANGOS_DLL_DECL instance_dark_portal : public ScriptedInstance
         m_uiNextPortal_Timer = 0;
     }
 
-    void UpdateBMWorldState(uint32 id, uint32 state)
-    {
-        Map::PlayerList const& players = instance->GetPlayers();
-
-        if (!players.isEmpty())
-        {
-            for(Map::PlayerList::const_iterator itr = players.begin(); itr != players.end(); ++itr)
-            {
-                if (Player* pPlayer = itr->getSource())
-                    pPlayer->SendUpdateWorldState(id,state);
-            }
-        }else debug_log("SD2: Instance Black Portal: UpdateBMWorldState, but PlayerList is empty!");
-    }
-
     void InitWorldState(bool Enable = true)
     {
-        UpdateBMWorldState(WORLD_STATE_BM,Enable ? 1 : 0);
-        UpdateBMWorldState(WORLD_STATE_BM_SHIELD,100);
-        UpdateBMWorldState(WORLD_STATE_BM_RIFT,0);
+        DoUpdateWorldState(WORLD_STATE_BM,Enable ? 1 : 0);
+        DoUpdateWorldState(WORLD_STATE_BM_SHIELD,100);
+        DoUpdateWorldState(WORLD_STATE_BM_RIFT,0);
     }
 
     bool IsEncounterInProgress()
@@ -163,7 +149,8 @@ struct MANGOS_DLL_DECL instance_dark_portal : public ScriptedInstance
                 if (data == SPECIAL && m_auiEncounter[0] == IN_PROGRESS)
                 {
                     --m_uiShieldPercent;
-                    UpdateBMWorldState(WORLD_STATE_BM_SHIELD, m_uiShieldPercent);
+
+                    DoUpdateWorldState(WORLD_STATE_BM_SHIELD, m_uiShieldPercent);
 
                     if (!m_uiShieldPercent)
                     {
@@ -300,13 +287,11 @@ struct MANGOS_DLL_DECL instance_dark_portal : public ScriptedInstance
                 {
                     if (pBoss->GetEntry() == NPC_AEONUS)
                     {
-                        pBoss->AddThreat(pMedivh,0.0f);
-                        pBoss->SetActiveObjectState(true);
+                        pBoss->AddThreat(pMedivh);
                     }
                     else
                     {
-                        pBoss->AddThreat(pTemp,0.0f);
-                        pBoss->SetActiveObjectState(true);
+                        pBoss->AddThreat(pTemp);
                         pTemp->CastSpell(pBoss,SPELL_RIFT_CHANNEL,false);
                     }
                 }
@@ -331,7 +316,8 @@ struct MANGOS_DLL_DECL instance_dark_portal : public ScriptedInstance
             if (m_uiNextPortal_Timer <= uiDiff)
             {
                 ++m_uiRiftPortalCount;
-                UpdateBMWorldState(WORLD_STATE_BM_RIFT, m_uiRiftPortalCount);
+
+                DoUpdateWorldState(WORLD_STATE_BM_RIFT, m_uiRiftPortalCount);
 
                 DoSpawnPortal();
                 m_uiNextPortal_Timer = RiftWaves[GetRiftWaveId()].NextPortalTime;

@@ -24,26 +24,14 @@ EndScriptData */
 #include "precompiled.h"
 #include "zulaman.h"
 
-struct SHostageInfo
-{
-    uint32 npc, go;
-    float x, y, z, o;
-};
-
-static SHostageInfo HostageInfo[] =
-{
-    {23790, 186648, -57, 1343, 40.77, 3.2}, // bear
-    {23999, 187021, 400, 1414, 74.36, 3.3}, // eagle
-    {24001, 186672, -35, 1134, 18.71, 1.9}, // dragonhawk
-    {24024, 186667, 413, 1117,  6.32, 3.1}  // lynx
-    
-};
-
 struct MANGOS_DLL_DECL instance_zulaman : public ScriptedInstance
 {
     instance_zulaman(Map* pMap) : ScriptedInstance(pMap) {Initialize();}
 
+    uint32 m_auiEncounter[MAX_ENCOUNTER];
+    uint32 m_auiRandVendor[MAX_VENDOR];
     std::string strInstData;
+
     uint32 m_uiEventTimer;
     uint32 m_uiEventMinuteStep;
 
@@ -53,6 +41,7 @@ struct MANGOS_DLL_DECL instance_zulaman : public ScriptedInstance
     uint64 m_uiNalorakkGUID;
     uint64 m_uiJanalaiGUID;
     uint64 m_uiHalazziGUID;
+    uint64 m_uiSpiritLynxGUID;
     uint64 m_uiZuljinGUID;
     uint64 m_uiMalacrassGUID;
     uint64 m_uiHarrisonGUID;
@@ -61,35 +50,14 @@ struct MANGOS_DLL_DECL instance_zulaman : public ScriptedInstance
     uint64 m_uiMassiveGateGUID;
     uint64 m_uiMalacrassEntranceGUID;
 
-    uint32 m_uiJanalaiEggCntL;
-    uint32 m_uiJanalaiEggCntR;
-
-    uint32 m_uiEncounter[ENCOUNTERS];
-    uint32 m_uiRandVendor[RAND_VENDOR];
-
-    uint64 HexLordGateGUID;
-    uint64 ZulJinGateGUID;
-    uint64 AkilzonDoorGUID;
-    uint64 ZulJinDoorGUID;
-    uint64 HalazziDoorGUID;
- 
-    uint32 QuestTimer;
-    uint16 BossKilled;
-    uint16 QuestMinute;
-    uint16 ChestLooted;
+    std::list<uint64> m_lEggsGUIDList;
+    uint32 m_uiEggsRemainingCount_Left;
+    uint32 m_uiEggsRemainingCount_Right;
 
     void Initialize()
     {
-        uint64 HexLordGateGUID = 0;
-        uint64 ZulJinGateGUID = 0;
-        uint64 AkilzonDoorGUID = 0;
-        uint64 HalazziDoorGUID = 0;
-        uint64 ZulJinDoorGUID = 0;
- 
-        QuestTimer = 0;
-        QuestMinute = 21;
-        BossKilled = 0;
-        ChestLooted = 0;
+        memset(&m_auiEncounter, 0, sizeof(m_auiEncounter));
+        memset(&m_auiRandVendor, 0, sizeof(m_auiRandVendor));
 
         m_uiEventTimer = MINUTE*IN_MILISECONDS;
         m_uiEventMinuteStep = MINUTE/3;
@@ -100,6 +68,7 @@ struct MANGOS_DLL_DECL instance_zulaman : public ScriptedInstance
         m_uiNalorakkGUID = 0;
         m_uiJanalaiGUID = 0;
         m_uiHalazziGUID = 0;
+        m_uiSpiritLynxGUID = 0;
         m_uiZuljinGUID = 0;
         m_uiMalacrassGUID = 0;
         m_uiHarrisonGUID = 0;
@@ -108,60 +77,12 @@ struct MANGOS_DLL_DECL instance_zulaman : public ScriptedInstance
         m_uiMassiveGateGUID = 0;
         m_uiMalacrassEntranceGUID = 0;
 
-        m_uiJanalaiEggCntL = 20;
-        m_uiJanalaiEggCntR = 20;
-
-        for(uint8 i = 0; i < ENCOUNTERS; i++)
-            m_uiEncounter[i] = NOT_STARTED;
-
-        for(uint8 i = 0; i < RAND_VENDOR; i++)
-            m_uiRandVendor[i] = NOT_STARTED;
+        m_lEggsGUIDList.clear();
+        m_uiEggsRemainingCount_Left = 20;
+        m_uiEggsRemainingCount_Right = 20;
     }
 
-    void UpdateInstanceWorldState(uint32 uiId, uint32 uiState)
-    {
-        Map::PlayerList const& players = instance->GetPlayers();
-
-        if (!players.isEmpty())
-        {
-            for(Map::PlayerList::const_iterator itr = players.begin(); itr != players.end(); ++itr)
-            {
-                if (Player* pPlayer = itr->getSource())
-                {
-                    pPlayer->SendUpdateWorldState(uiId, uiState);
-                    debug_log("SD2: Instance Zulaman: UpdateInstanceWorldState for id %u with state %u",uiId,uiState);
-                }
-            }
-        }
-        else
-            debug_log("SD2: Instance Zulaman: UpdateInstanceWorldState, but PlayerList is empty.");
-    }
-    void UpdateWorldState(uint32 field, uint32 value)
-    {
-        WorldPacket data(SMSG_UPDATE_WORLD_STATE, 8);
-        data << field << value;
-        ((InstanceMap*)instance)->SendToPlayers(&data);
-    }
-    void SummonHostage(uint8 num)
-    {
-        if(!QuestMinute)
-            return;
-
-        Map::PlayerList const &PlayerList = instance->GetPlayers();
-        if (PlayerList.isEmpty())
-            return;
-
-        Map::PlayerList::const_iterator i = PlayerList.begin();
-        if(Player* i_pl = i->getSource())
-         {
-            if(Unit* Hostage = i_pl->SummonCreature(HostageInfo[num].npc, HostageInfo[num].x, HostageInfo[num].y, HostageInfo[num].z, HostageInfo[num].o, TEMPSUMMON_DEAD_DESPAWN, 0))
-            {
-                Hostage->SetFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_NON_ATTACKABLE);
-                Hostage->SetFlag(UNIT_NPC_FLAGS, UNIT_NPC_FLAG_GOSSIP);
-            }
-        } 
-     }
-    void OnCreatureCreate(Creature* pCreature, uint32 uiCreatureEntry)
+    void OnCreatureCreate(Creature* pCreature)
     {
         switch(pCreature->GetEntry())
         {
@@ -172,6 +93,11 @@ struct MANGOS_DLL_DECL instance_zulaman : public ScriptedInstance
             case 23863: m_uiZuljinGUID      = pCreature->GetGUID(); break;
             case 24239: m_uiMalacrassGUID   = pCreature->GetGUID(); break;
             case 24358: m_uiHarrisonGUID    = pCreature->GetGUID(); break;
+            case NPC_SPIRIT_LYNX: m_uiSpiritLynxGUID  = pCreature->GetGUID(); break;
+            case NPC_EGG:
+                if (m_auiEncounter[3] != DONE)
+                    m_lEggsGUIDList.push_back(pCreature->GetGUID());
+                break;
         }
     }
 
@@ -184,23 +110,11 @@ struct MANGOS_DLL_DECL instance_zulaman : public ScriptedInstance
                 break;
             case 186728:
                 m_uiMassiveGateGUID = pGo->GetGUID();
-                m_uiStrangeGongGUID = pGo->GetGUID();
-                break;
-            case 186303:
-                HalazziDoorGUID = pGo->GetGUID();
-                break;
-            case 186304:
-                ZulJinGateGUID = pGo->GetGUID();
+                if (m_auiEncounter[0] == IN_PROGRESS || m_auiEncounter[0] == DONE)
+                    pGo->SetGoState(GO_STATE_ACTIVE);
                 break;
             case 186305:
                 m_uiMalacrassEntranceGUID = pGo->GetGUID();
-                HexLordGateGUID = pGo->GetGUID();
-                break;
-            case 186858:
-                AkilzonDoorGUID = pGo->GetGUID();
-                break;
-            case 186859:
-                ZulJinDoorGUID = pGo->GetGUID();
                 break;
         }
     }
@@ -216,141 +130,101 @@ struct MANGOS_DLL_DECL instance_zulaman : public ScriptedInstance
                 {
                     ++m_uiGongCount;
                     if (m_uiGongCount == 5)
-                        m_uiEncounter[0] = uiData;
+                        m_auiEncounter[0] = uiData;
                 }
                 if (uiData == IN_PROGRESS)
                 {
                     DoUseDoorOrButton(m_uiMassiveGateGUID);
-                    UpdateInstanceWorldState(WORLD_STATE_COUNTER,m_uiEventMinuteStep);
-                    UpdateInstanceWorldState(WORLD_STATE_ID,1);
-                    m_uiEncounter[0] = uiData;
+                    DoUpdateWorldState(WORLD_STATE_COUNTER,m_uiEventMinuteStep);
+                    DoUpdateWorldState(WORLD_STATE_ID,1);
+                    m_auiEncounter[0] = uiData;
                 }
                 break;
             case TYPE_AKILZON:
-                if (uiData == IN_PROGRESS)
-                {
-                DoUseDoorOrButton(AkilzonDoorGUID);
-                }
                 if (uiData == DONE)
                 {
-                DoUseDoorOrButton(AkilzonDoorGUID);
-                if(QuestMinute)
-                {
-                    QuestMinute += 10;
-                    UpdateWorldState(3106, QuestMinute);
-                }
-                SummonHostage(1);
-                    if (m_uiEncounter[0] == IN_PROGRESS)
+                    if (m_auiEncounter[0] == IN_PROGRESS)
                     {
                         m_uiEventMinuteStep += MINUTE/6;    //add 10 minutes
-                        UpdateInstanceWorldState(WORLD_STATE_COUNTER,m_uiEventMinuteStep);
+                        DoUpdateWorldState(WORLD_STATE_COUNTER,m_uiEventMinuteStep);
                     }
                 }
-                m_uiEncounter[1] = uiData;
+                m_auiEncounter[1] = uiData;
                 break;
             case TYPE_NALORAKK:
                 if (uiData == DONE)
                 {
-                if(QuestMinute)
-                 {
-                    QuestMinute += 15;
-                    UpdateWorldState(3106, QuestMinute);
-                 }
-                SummonHostage(0);
-                    if (m_uiEncounter[0] == IN_PROGRESS)
+                    if (m_auiEncounter[0] == IN_PROGRESS)
                     {
                         m_uiEventMinuteStep += MINUTE/4;    //add 15 minutes
-                        UpdateInstanceWorldState(WORLD_STATE_COUNTER,m_uiEventMinuteStep);
+                        DoUpdateWorldState(WORLD_STATE_COUNTER,m_uiEventMinuteStep);
                     }
                 }
-                m_uiEncounter[2] = uiData;
+                m_auiEncounter[2] = uiData;
                 break;
             case TYPE_JANALAI:
                 if (uiData == NOT_STARTED)
                 {
-                    m_uiJanalaiEggCntL = 20;
-                    m_uiJanalaiEggCntR = 20;
+                    m_uiEggsRemainingCount_Left = 20;
+                    m_uiEggsRemainingCount_Right = 20;
+
+                    if (!m_lEggsGUIDList.empty())
+                    {
+                        for(std::list<uint64>::iterator itr = m_lEggsGUIDList.begin(); itr != m_lEggsGUIDList.end(); ++itr)
+                        {
+                            if (Creature* pEgg = instance->GetCreature(*itr))
+                            {
+                                if (!pEgg->isAlive())
+                                    pEgg->Respawn();
+                            }
+                        }
+                    }
                 }
-                m_uiEncounter[3] = uiData;
                 if (uiData == DONE)
-                {
-                SummonHostage(2);
-                }
+                    m_lEggsGUIDList.clear();
+
+                m_auiEncounter[3] = uiData;
                 break;
             case TYPE_HALAZZI:
-                m_uiEncounter[4] = uiData;
-                if (uiData == IN_PROGRESS)
-                {
-                DoUseDoorOrButton(HalazziDoorGUID);
-                }
-                if (uiData == DONE)
-                {
-                DoUseDoorOrButton(HalazziDoorGUID);
-                SummonHostage(3);
-                }
+                m_auiEncounter[4] = uiData;
                 break;
             case TYPE_ZULJIN:
-                m_uiEncounter[5] = uiData;
-                if (uiData == IN_PROGRESS)
-                {
-                DoUseDoorOrButton(ZulJinDoorGUID);
-                }
-                if (uiData == DONE)
-                {
-                DoUseDoorOrButton(ZulJinDoorGUID);
-                }
+                m_auiEncounter[5] = uiData;
                 break;
             case TYPE_MALACRASS:
-                m_uiEncounter[6] = uiData;
-                if (uiData == IN_PROGRESS)
-                {
-                DoUseDoorOrButton(HexLordGateGUID);
-                }
-                if (uiData == DONE)
-                {
-                DoUseDoorOrButton(HexLordGateGUID);
-                DoUseDoorOrButton(ZulJinGateGUID);
-                }
+                m_auiEncounter[6] = uiData;
                 break;
-            case DATA_J_HATCHLEFT:
-                m_uiJanalaiEggCntL -= uiData;
+
+            case DATA_J_EGGS_RIGHT:
+                --m_uiEggsRemainingCount_Right;
                 break;
-            case DATA_J_HATCHRIGHT:
-                m_uiJanalaiEggCntR -= uiData;
+            case DATA_J_EGGS_LEFT:
+                --m_uiEggsRemainingCount_Left;
                 break;
-            case DATA_CHESTLOOTED:
-                ChestLooted++;
-                SaveToDB();
-                break;
+
             case TYPE_RAND_VENDOR_1:
-                m_uiRandVendor[0] = uiData;
+                m_auiRandVendor[0] = uiData;
                 break;
             case TYPE_RAND_VENDOR_2:
-                m_uiRandVendor[1] = uiData;
+                m_auiRandVendor[1] = uiData;
                 break;
             default:
                 error_log("SD2: Instance Zulaman: ERROR SetData = %u for type %u does not exist/not implemented.",uiType,uiData);
                 break;
         }
 
+        if (m_auiEncounter[1] == DONE && m_auiEncounter[2] == DONE && m_auiEncounter[3] == DONE &&
+            m_auiEncounter[4] == DONE && m_auiEncounter[5] != IN_PROGRESS)
+            DoUseDoorOrButton(m_uiMalacrassEntranceGUID);
+
         if (uiData == DONE || (uiType == TYPE_EVENT_RUN && uiData == IN_PROGRESS))
         {
             OUT_SAVE_INST_DATA;
-        if (uiData == DONE)
-        {
-            BossKilled++;
-            if(QuestMinute && BossKilled >= 4)
-            {
-                QuestMinute = 0;
-                UpdateWorldState(3104, 0);
-            }
-                 if(BossKilled = 4)
-                DoUseDoorOrButton(HexLordGateGUID);
 
-        }
             std::ostringstream saveStream;
-            saveStream << "S " << BossKilled << " " << ChestLooted << " " << QuestMinute << " "  << m_uiEncounter[0] << " " << m_uiEncounter[1] << " " << m_uiEncounter[2] << " "
-                << m_uiEncounter[3] << " " << m_uiEncounter[4] << " " << m_uiEncounter[5] << " " << m_uiEncounter[6];
+            saveStream << m_auiEncounter[0] << " " << m_auiEncounter[1] << " " << m_auiEncounter[2] << " "
+                << m_auiEncounter[3] << " " << m_auiEncounter[4] << " " << m_auiEncounter[5] << " "
+                << m_auiEncounter[6];
 
             strInstData = saveStream.str();
 
@@ -373,22 +247,16 @@ struct MANGOS_DLL_DECL instance_zulaman : public ScriptedInstance
         }
 
         OUT_LOAD_INST_DATA(chrIn);
-        char dataHead; // S
-        uint16 data1, data2, data3;
+
         std::istringstream loadStream(chrIn);
-        loadStream >> dataHead >> data1 >> data2 >> data3 >> m_uiEncounter[0] >> m_uiEncounter[1] >> m_uiEncounter[2] >> m_uiEncounter[3]
-            >> m_uiEncounter[4] >> m_uiEncounter[5] >> m_uiEncounter[6] >> ChestLooted;
-        if(dataHead == 'S')
-        {
-            BossKilled = data1;
-            ChestLooted = data2;
-            QuestMinute = data3;
-        }else error_log("SD2: Zul'aman: corrupted save data.");
+        loadStream >> m_auiEncounter[0] >> m_auiEncounter[1] >> m_auiEncounter[2] >> m_auiEncounter[3]
+            >> m_auiEncounter[4] >> m_auiEncounter[5] >> m_auiEncounter[6];
+
         //not changing m_uiEncounter[0], TYPE_EVENT_RUN must not reset to NOT_STARTED
-        for(uint8 i = 1; i < ENCOUNTERS; ++i)
+        for(uint8 i = 1; i < MAX_ENCOUNTER; ++i)
         {
-            if (m_uiEncounter[i] == IN_PROGRESS)
-                m_uiEncounter[i] = NOT_STARTED;
+            if (m_auiEncounter[i] == IN_PROGRESS)
+                m_auiEncounter[i] = NOT_STARTED;
         }
 
         OUT_LOAD_INST_DATA_COMPLETE;
@@ -399,29 +267,29 @@ struct MANGOS_DLL_DECL instance_zulaman : public ScriptedInstance
         switch(uiType)
         {
             case TYPE_EVENT_RUN:
-                return m_uiEncounter[0];
+                return m_auiEncounter[0];
             case TYPE_AKILZON:
-                return m_uiEncounter[1];
+                return m_auiEncounter[1];
             case TYPE_NALORAKK:
-                return m_uiEncounter[2];
+                return m_auiEncounter[2];
             case TYPE_JANALAI:
-                return m_uiEncounter[3];
+                return m_auiEncounter[3];
             case TYPE_HALAZZI:
-                return m_uiEncounter[4];
+                return m_auiEncounter[4];
             case TYPE_ZULJIN:
-                return m_uiEncounter[5];
+                return m_auiEncounter[5];
             case TYPE_MALACRASS:
-                return m_uiEncounter[6];
-            case DATA_CHESTLOOTED:   return ChestLooted;
-            case DATA_J_EGGSLEFT:
-                return m_uiJanalaiEggCntL;
-            case DATA_J_EGGSRIGHT:
-                return m_uiJanalaiEggCntR;
+                return m_auiEncounter[6];
+
+            case DATA_J_EGGS_LEFT:
+                return m_uiEggsRemainingCount_Left;
+            case DATA_J_EGGS_RIGHT:
+                return m_uiEggsRemainingCount_Right;
 
             case TYPE_RAND_VENDOR_1:
-                return m_uiRandVendor[0];
+                return m_auiRandVendor[0];
             case TYPE_RAND_VENDOR_2:
-                return m_uiRandVendor[1];
+                return m_auiRandVendor[1];
         }
         return 0;
     }
@@ -438,6 +306,8 @@ struct MANGOS_DLL_DECL instance_zulaman : public ScriptedInstance
                 return m_uiJanalaiGUID;
             case DATA_HALAZZI:
                 return m_uiHalazziGUID;
+            case DATA_SPIRIT_LYNX:
+                return m_uiSpiritLynxGUID;
             case DATA_ZULJIN:
                 return m_uiZuljinGUID;
             case DATA_MALACRASS:
@@ -456,22 +326,6 @@ struct MANGOS_DLL_DECL instance_zulaman : public ScriptedInstance
 
     void Update(uint32 uiDiff)
     {
-        if(QuestMinute)
-        {
-            if(QuestTimer < uiDiff)
-            {
-                QuestMinute--;
-                SaveToDB();
-                QuestTimer += 60000;
-                if(QuestMinute)
-                {
-                    UpdateWorldState(3104, 1);
-                    UpdateWorldState(3106, QuestMinute);
-                }else UpdateWorldState(3104, 0);
-            }
-            QuestTimer -= uiDiff;
-         }
-
         if (GetData(TYPE_EVENT_RUN) == IN_PROGRESS)
         {
             if (m_uiEventTimer <= uiDiff)
@@ -479,12 +333,12 @@ struct MANGOS_DLL_DECL instance_zulaman : public ScriptedInstance
                 if (m_uiEventMinuteStep == 0)
                 {
                     debug_log("SD2: Instance Zulaman: event time reach end, event failed.");
-                    m_uiEncounter[0] = FAIL;
+                    m_auiEncounter[0] = FAIL;
                     return;
                 }
 
                 --m_uiEventMinuteStep;
-                UpdateInstanceWorldState(WORLD_STATE_COUNTER, m_uiEventMinuteStep);
+                DoUpdateWorldState(WORLD_STATE_COUNTER, m_uiEventMinuteStep);
                 debug_log("SD2: Instance Zulaman: minute decrease to %u.",m_uiEventMinuteStep);
 
                 m_uiEventTimer = MINUTE*IN_MILISECONDS;

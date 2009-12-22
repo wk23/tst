@@ -5,11 +5,11 @@
 #ifndef DEF_ZULAMAN_H
 #define DEF_ZULAMAN_H
 
-#define ENCOUNTERS     7
-#define RAND_VENDOR    2
-
 enum InstanceZA
 {
+    MAX_ENCOUNTER           = 7,
+    MAX_VENDOR              = 2,
+
     SAY_INST_RELEASE        = -1568067,
     SAY_INST_BEGIN          = -1568068,
     SAY_INST_PROGRESS_1     = -1568069,
@@ -44,24 +44,17 @@ enum InstanceZA
     DATA_MALACRASS          = 14,
     DATA_ZULJIN             = 15,
     DATA_HARRISON           = 16,
+    DATA_SPIRIT_LYNX        = 17,
 
-    DATA_J_EGGSLEFT         = 17,
-    DATA_J_EGGSRIGHT        = 18,
-    DATA_J_HATCHLEFT        = 19,
-    DATA_J_HATCHRIGHT       = 20,
+    DATA_J_EGGS_RIGHT       = 19,
+    DATA_J_EGGS_LEFT        = 20,
 
     DATA_GO_GONG            = 21,
     DATA_GO_MALACRASS_GATE  = 22,
     DATA_GO_ENTRANCE        = 23,
 
-DATA_NALORAKKEVENT  =3,
-DATA_AKILZONEVENT   =2,
-DATA_JANALAIEVENT   =4,
-DATA_HALAZZIEVENT   =5,
-DATA_HEXLORDEVENT   =6,
-DATA_ZULJINEVENT    =7,
-DATA_CHESTLOOTED    =30
-
+    NPC_EGG                 = 23817,
+    NPC_SPIRIT_LYNX         = 24143
 };
 
 #endif
