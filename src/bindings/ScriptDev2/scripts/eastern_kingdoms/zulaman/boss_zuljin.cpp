@@ -242,7 +242,7 @@ struct MANGOS_DLL_DECL boss_zuljinAI : public ScriptedAI
         if (!done_by)
             return;
 
-        if (m_creature->GetDistance2d(spawn_x, spawn_y)>35.0)
+        if (m_creature->GetDistance2d(spawn_x, spawn_y)>75.0)
             return;
 
         if (done_by->GetTypeId() != TYPEID_PLAYER) 
