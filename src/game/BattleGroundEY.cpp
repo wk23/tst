@@ -50,6 +50,16 @@ void BattleGroundEY::Update(uint32 diff)
     {
         ModifyStartDelayTime(diff);
 
+        for(BattleGroundPlayerMap::const_iterator itr = GetPlayers().begin(); itr != GetPlayers().end(); ++itr)
+            if (Player* plr = sObjectMgr.GetPlayer(itr->first))
+            if (!plr->isGameMaster() && ((plr->m_movementInfo.x != plr->GetBattleGroundEntryPoint().coord_x && plr->GetTeam() == ALLIANCE && plr->m_movementInfo.x<2470.0f) || (plr->m_movementInfo.x != plr->GetBattleGroundEntryPoint().coord_x && plr->GetTeam() == HORDE && plr->m_movementInfo.x>1880.0f)))
+            {
+                sLog.outError("Player %s (GUID: %u) banned on EY - exit before opening of doors x:[%f] y:[%f] e_x:[%f] e_y:[%f]",plr->GetName(),plr->GetGUIDLow(),plr->m_movementInfo.x,plr->m_movementInfo.y,plr->GetBattleGroundEntryPoint().coord_x,plr->GetBattleGroundEntryPoint().coord_y);
+                //std::string reason = "EY - exit before opening of doors by character ";
+                //reason.append(plr->GetName());
+                //sWorld.BanAccount(BAN_CHARACTER, plr->GetName(), "-1", reason,"EY_autoban");
+            }
+
         if(!(m_Events & 0x01))
         {
             m_Events |= 0x01;
