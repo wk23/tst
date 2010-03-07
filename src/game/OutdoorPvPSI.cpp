@@ -261,7 +261,7 @@ bool OutdoorPvPSI::HandleCustomSpell(Player *plr, uint32 spellId, GameObject *go
     if(go->GetGOInfo()->id == SI_SILITHYST_MOUND)
     {
         // despawn go
-        go->SetRespawnTime(0);
+        go->SetRespawnTime(300);
         go->Delete();
     }
     return true;
