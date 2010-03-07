@@ -321,7 +321,7 @@ void Unit::Update( uint32 p_time )
 bool Unit::haveOffhandWeapon() const
 {
     if(GetTypeId() == TYPEID_PLAYER)
-        return ((Player*)this)->GetWeaponForAttack(OFF_ATTACK,true);
+        return ((Player*)this)->GetWeaponForAttack(OFF_ATTACK,true,true);
     else
         return false;
 }
@@ -2893,9 +2893,9 @@ float Unit::GetUnitParryChance() const
         Player const* player = (Player const*)this;
         if(player->CanParry() )
         {
-            Item *tmpitem = player->GetWeaponForAttack(BASE_ATTACK,true);
+            Item *tmpitem = player->GetWeaponForAttack(BASE_ATTACK,true,true);
             if(!tmpitem)
-                tmpitem = player->GetWeaponForAttack(OFF_ATTACK,true);
+                tmpitem = player->GetWeaponForAttack(OFF_ATTACK,true,true);
 
             if(tmpitem)
                 chance = GetFloatValue(PLAYER_PARRY_PERCENTAGE);
@@ -3002,7 +3002,7 @@ uint32 Unit::GetWeaponSkillValue (WeaponAttackType attType, Unit const* target) 
     uint32 value = 0;
     if(GetTypeId() == TYPEID_PLAYER)
     {
-        Item* item = ((Player*)this)->GetWeaponForAttack(attType,true);
+       Item* item = ((Player*)this)->GetWeaponForAttack(attType,true,true);
 
         // feral or unarmed skill only for base attack
         if(attType != BASE_ATTACK && !item )
@@ -4703,6 +4703,25 @@ bool Unit::HandleDummyAuraProc(Unit *pVictim, uint32 damage, Aura* triggeredByAu
 
                     triggered_spell_id = 26654;
                     break;
+                }
+                //sunwell eredar twins
+                case 45248: 
+                case 45329: 
+                case 45256: 
+                case 45270:
+                {
+                    // Need remove  aura dark flame
+                    if (HasAura(45348,0))
+                       RemoveAurasDueToSpell(45348);
+                    return true;
+                }
+                case 45342:
+                case 46771:
+                {
+                    // Need remove  aura dark touch
+                    if (HasAura(45347,0))
+                       RemoveAurasDueToSpell(45347);
+                    return true;
                 }
                 // Unstable Power
                 case 24658:
@@ -11269,7 +11288,7 @@ float Unit::GetAPMultiplier(WeaponAttackType attType, bool normalized)
     if (!normalized || GetTypeId() != TYPEID_PLAYER)
         return float(GetAttackTime(attType))/1000.0f;
 
-    Item *Weapon = ((Player*)this)->GetWeaponForAttack(attType);
+    Item *Weapon = ((Player*)this)->GetWeaponForAttack(attType, true, false);
     if (!Weapon)
         return 2.4;                                         // fist attack
 
@@ -11414,18 +11433,8 @@ bool Unit::IsTriggeredAtSpellProcEvent(Unit *pVictim, Aura* aura, SpellEntry con
     {
         if(spellProto->EquippedItemClass == ITEM_CLASS_WEAPON)
         {
-            Item *item = NULL;
-            if(attType == BASE_ATTACK)
-                item = ((Player*)this)->GetItemByPos(INVENTORY_SLOT_BAG_0, EQUIPMENT_SLOT_MAINHAND);
-            else if (attType == OFF_ATTACK)
-                item = ((Player*)this)->GetItemByPos(INVENTORY_SLOT_BAG_0, EQUIPMENT_SLOT_OFFHAND);
-            else
-                item = ((Player*)this)->GetItemByPos(INVENTORY_SLOT_BAG_0, EQUIPMENT_SLOT_RANGED);
-
-            if (!((Player*)this)->IsUseEquipedWeapon(attType==BASE_ATTACK))
-                return false;
-
-            if(!item || item->IsBroken() || item->GetProto()->Class != ITEM_CLASS_WEAPON || !((1<<item->GetProto()->SubClass) & spellProto->EquippedItemSubClassMask))
+            Item *item = ((Player*)this)->GetWeaponForAttack(attType,true,true);
+             if(!item || !((1<<item->GetProto()->SubClass) & spellProto->EquippedItemSubClassMask))
                 return false;
         }
         else if(spellProto->EquippedItemClass == ITEM_CLASS_ARMOR)

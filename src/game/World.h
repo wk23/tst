@@ -200,6 +200,9 @@ enum WorldConfigs
     CONFIG_ARENA_RATING_DISCARD_TIMER,
     CONFIG_ARENA_AUTO_DISTRIBUTE_POINTS,
     CONFIG_ARENA_AUTO_DISTRIBUTE_INTERVAL_DAYS,
+    CONFIG_ARENA_DAY,
+    CONFIG_ARENA_HOUR,
+    CONFIG_ARENA_MIN,
     CONFIG_ARENA_QUEUE_ANNOUNCER_ENABLE,
     CONFIG_ARENA_SEASON_ID,
     CONFIG_ARENA_SEASON_IN_PROGRESS,
@@ -530,6 +533,7 @@ class World
         void InitDailyQuestResetTime();
         void ResetDailyQuests();
         void InitInstResetTime();
+        void InitArenaDistribution();
     private:
         static volatile bool m_stopEvent;
         static uint8 m_ExitCode;
@@ -584,6 +588,10 @@ class World
 
         // next inst reset time
         time_t m_NextInstReset;
+
+        // next arena distribution time
+        time_t m_NextAutoArenaDistributionTime;
+        time_t m_PrevAutoArenaDistributionTime;
 
         //Player Queue
         Queue m_QueuedPlayer;
