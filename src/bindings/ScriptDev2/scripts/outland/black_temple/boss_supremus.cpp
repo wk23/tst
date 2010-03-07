@@ -121,7 +121,7 @@ struct MANGOS_DLL_DECL npc_volcanoAI : public ScriptedAI
         CheckTimer = 1000;
         SupremusGUID = 0;
         FireballTimer = 500;
-        GeyserTimer = 0;
+        GeyserTimer = 2000;
     }
 
     void AttackStart(Unit* who) {}
@@ -154,11 +154,11 @@ struct MANGOS_DLL_DECL boss_supremusAI : public ScriptedAI
 {
     boss_supremusAI(Creature* pCreature) : ScriptedAI(pCreature)
     {
-        m_pInstance = (ScriptedInstance*)pCreature->GetInstanceData();
+        pInstance = ((ScriptedInstance*)pCreature->GetInstanceData());
         Reset();
     }
 
-    ScriptedInstance* m_pInstance;
+    ScriptedInstance* pInstance;
 
     uint32 SummonFlameTimer;
     uint32 SwitchTargetTimer;
@@ -171,6 +171,25 @@ struct MANGOS_DLL_DECL boss_supremusAI : public ScriptedAI
 
     void Reset()
     {
+        if (pInstance)
+        {
+            if (m_creature->isAlive())
+            {
+                pInstance->SetData(TYPE_SUPREMUS, NOT_STARTED);
+                ToggleMainDoors(true);
+
+                if (pInstance->GetData(TYPE_NAJENTUS) == DONE)
+                    ToggleGate(false);
+                else
+                    ToggleGate(true);
+            }
+            else
+            {
+                ToggleGate(false);
+                ToggleMainDoors(false);
+            }
+        }
+
         HurtfulStrikeTimer = 5000;
         SummonFlameTimer = 20000;
         SwitchTargetTimer = 90000;
@@ -181,31 +200,50 @@ struct MANGOS_DLL_DECL boss_supremusAI : public ScriptedAI
         Phase1 = true;
     }
 
-    void JustReachedHome()
-    {
-        if (m_pInstance)
-            m_pInstance->SetData(TYPE_SUPREMUS, NOT_STARTED);
-    }
-
-    void Aggro(Unit* pWho)
+    void Aggro(Unit *who)
     {
         m_creature->SetInCombatWithZone();
 
-        if (m_pInstance)
-            m_pInstance->SetData(TYPE_SUPREMUS, IN_PROGRESS);
+        if (pInstance)
+            pInstance->SetData(TYPE_SUPREMUS, IN_PROGRESS);
+    }
+
+    void ToggleMainDoors(bool close)
+    {
+        if (GameObject* pDoors = pInstance->instance->GetGameObject(pInstance->GetData64(DATA_GAMEOBJECT_SUPREMUS_DOORS)))
+        {
+            if (close)
+                pDoors->SetGoState(GO_STATE_READY);         // Closed
+            else
+                pDoors->SetGoState(GO_STATE_ACTIVE);        // Open
+        }
+    }
+
+    void ToggleGate(bool close)
+    {
+        if (GameObject* pDoors = pInstance->instance->GetGameObject(pInstance->GetData64(DATA_GAMEOBJECT_NAJENTUS_GATE)))
+        {
+            if (close)
+                pDoors->SetGoState(GO_STATE_READY);         // Closed
+            else
+                pDoors->SetGoState(GO_STATE_ACTIVE);        // Open
+        }
     }
 
     void JustDied(Unit *killer)
     {
-        if (m_pInstance)
-            m_pInstance->SetData(TYPE_SUPREMUS, DONE);
+        if (pInstance)
+        {
+            pInstance->SetData(TYPE_SUPREMUS, DONE);
+            ToggleMainDoors(false);
+        }
     }
 
     float CalculateRandomCoord(float initial)
     {
         float coord = 0;
 
-        switch(urand(0, 1))
+        switch(rand()%2)
         {
             case 0: coord = initial + 20 + rand()%20; break;
             case 1: coord = initial - 20 - rand()%20; break;
@@ -320,15 +358,7 @@ struct MANGOS_DLL_DECL boss_supremusAI : public ScriptedAI
 
                 if (target)
                 {
-                    Creature* Volcano = NULL;
-                    Volcano = SummonCreature(CREATURE_VOLCANO, target);
-
-                    if (Volcano)
-                    {
-                        DoCast(target, SPELL_VOLCANIC_ERUPTION);
-                        ((npc_volcanoAI*)Volcano->AI())->SetSupremusGUID(m_creature->GetGUID());
-                    }
-
+                    DoCast(target, SPELL_VOLCANIC_ERUPTION);
                     DoScriptText(EMOTE_GROUND_CRACK, m_creature);
                     SummonVolcanoTimer = 10000;
                 }

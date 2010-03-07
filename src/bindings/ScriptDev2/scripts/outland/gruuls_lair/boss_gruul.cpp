@@ -82,6 +82,21 @@ struct MANGOS_DLL_DECL boss_gruulAI : public ScriptedAI
         m_bPerformingGroundSlam     = false;
     }
 
+    void DamageTaken(Unit *done_by, uint32 &damage)
+    {
+        if (!done_by)
+            return;
+
+        if (done_by->GetTypeId() != TYPEID_PLAYER) 
+        {
+            Unit* owner = done_by->GetCharmerOrOwner();
+            if (!owner)
+               return;
+            else if (owner->GetTypeId() != TYPEID_PLAYER)
+               return;
+        }
+    }
+
     void Aggro(Unit *pWho)
     {
         DoScriptText(SAY_AGGRO, m_creature);

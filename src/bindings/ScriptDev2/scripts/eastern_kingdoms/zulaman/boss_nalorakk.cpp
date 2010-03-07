@@ -59,13 +59,13 @@ enum
 
 struct MANGOS_DLL_DECL boss_nalorakkAI : public ScriptedAI
 {
-    boss_nalorakkAI(Creature* pCreature) : ScriptedAI(pCreature)
+    boss_nalorakkAI(Creature *c) : ScriptedAI(c)
     {
-        m_pInstance = (ScriptedInstance*)pCreature->GetInstanceData();
+        pInstance = ((ScriptedInstance*)c->GetInstanceData());
         Reset();
     }
 
-    ScriptedInstance* m_pInstance;
+    ScriptedInstance *pInstance;
 
     uint32 ChangeForm_Timer;
     uint32 BrutalSwipe_Timer;
@@ -81,8 +81,19 @@ struct MANGOS_DLL_DECL boss_nalorakkAI : public ScriptedAI
     bool ChangedToBear;
     bool ChangedToTroll;
 
+    float spawn_x;
+    float spawn_y;
+    float spawn_z;
+
     void Reset()
     {
+        if(pInstance)
+            pInstance->SetData(DATA_NALORAKKEVENT, NOT_STARTED);
+
+        spawn_x=m_creature->GetPositionX();
+        spawn_y=m_creature->GetPositionY();
+        spawn_z=m_creature->GetPositionZ();
+
         ChangeForm_Timer = 45000;
         BrutalSwipe_Timer = 12000;
         Mangle_Timer = 15000;
@@ -98,24 +109,45 @@ struct MANGOS_DLL_DECL boss_nalorakkAI : public ScriptedAI
         ChangedToTroll = true;
     }
 
+    void DamageTaken(Unit *done_by, uint32 &damage)
+    {
+        if (!done_by)
+            return;
+
+        if (m_creature->GetDistance2d(spawn_x, spawn_y)>60.0)
+            return;
+
+        if (done_by->GetTypeId() != TYPEID_PLAYER) 
+        {
+            Unit* owner = done_by->GetCharmerOrOwner();
+            if (!owner)
+               return;
+            else if (owner->GetTypeId() != TYPEID_PLAYER)
+               return;
+        }
+    }
+
     void Aggro(Unit *who)
     {
         DoScriptText(SAY_AGGRO, m_creature);
+        m_creature->SetInCombatWithZone();
     }
 
-    void KilledUnit(Unit* victim)
-    {
-        DoScriptText(urand(0, 1) ? SAY_SLAY1 : SAY_SLAY2, m_creature);
-    }
+    void JustDied(Unit* Killer)    
+    {	
+        if(pInstance)
+            pInstance->SetData(DATA_NALORAKKEVENT, DONE);
 
-    void JustDied(Unit* Killer)
-    {
         DoScriptText(SAY_DEATH, m_creature);
+    }
 
-        if (!m_pInstance)
-            return;
-
-        m_pInstance->SetData(TYPE_NALORAKK, DONE);
+    void KilledUnit(Unit* victim)    
+    {
+        switch(rand()%2)
+        {
+            case 0: DoScriptText(SAY_SLAY1, m_creature); break;
+            case 1: DoScriptText(SAY_SLAY2, m_creature); break;
+        }
     }
 
     void UpdateAI(const uint32 diff)
@@ -235,14 +267,13 @@ struct MANGOS_DLL_DECL boss_nalorakkAI : public ScriptedAI
                 DeafeningRoar_Timer = urand(15000, 25000);
             }else DeafeningRoar_Timer -= diff;
         }
-
         DoMeleeAttackIfReady();
     }
 };
 
-CreatureAI* GetAI_boss_nalorakk(Creature* pCreature)
+CreatureAI* GetAI_boss_nalorakk(Creature *_Creature)
 {
-    return new boss_nalorakkAI(pCreature);
+    return new boss_nalorakkAI (_Creature);
 }
 
 void AddSC_boss_nalorakk()

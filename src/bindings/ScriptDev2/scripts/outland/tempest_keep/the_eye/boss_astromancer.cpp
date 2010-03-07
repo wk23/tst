@@ -122,6 +122,22 @@ struct MANGOS_DLL_DECL boss_high_astromancer_solarianAI : public ScriptedAI
         m_creature->SetDisplayId(MODEL_HUMAN);
     }
 
+    void DamageTaken(Unit *done_by, uint32 &damage)
+    {
+        if (!done_by)
+            return;
+
+        if (done_by != m_creature) 
+        if (done_by->GetTypeId() != TYPEID_PLAYER) 
+        {
+            Unit* owner = done_by->GetCharmerOrOwner();
+            if (!owner)
+               return;
+            else if (owner->GetTypeId() != TYPEID_PLAYER)
+               return;
+        }
+    }
+
     void KilledUnit(Unit *victim)
     {
         switch(urand(0, 2))
@@ -401,6 +417,22 @@ struct MANGOS_DLL_DECL mob_solarium_priestAI : public ScriptedAI
         healTimer = 9000;
         holysmiteTimer = 1;
         aoesilenceTimer = 15000;
+    }
+
+    void DamageTaken(Unit *done_by, uint32 &damage)
+    {
+        if (!done_by)
+            return;
+
+        if (done_by != m_creature) 
+        if (done_by->GetTypeId() != TYPEID_PLAYER) 
+        {
+            Unit* owner = done_by->GetCharmerOrOwner();
+            if (!owner)
+               return;
+            else if (owner->GetTypeId() != TYPEID_PLAYER)
+               return;
+        }
     }
 
     void UpdateAI(const uint32 diff)

@@ -22,7 +22,7 @@ SDCategory: Caverns of Time, Mount Hyjal
 EndScriptData */
 
 #include "precompiled.h"
-#include "hyjal.h"
+#include "def_hyjal.h"
 #include "SpellAuras.h"
 
 //text id -1534018 are the text used when previous events complete. Not part of this script.
@@ -75,12 +75,12 @@ struct mob_ancient_wispAI : public ScriptedAI
 {
     mob_ancient_wispAI(Creature* pCreature) : ScriptedAI(pCreature)
     {
-        m_pInstance = (ScriptedInstance*)pCreature->GetInstanceData();
+        pInstance = ((ScriptedInstance*)pCreature->GetInstanceData());
         ArchimondeGUID = 0;
         Reset();
     }
 
-    ScriptedInstance* m_pInstance;
+    ScriptedInstance* pInstance;
     uint64 ArchimondeGUID;
     uint32 CheckTimer;
 
@@ -88,8 +88,8 @@ struct mob_ancient_wispAI : public ScriptedAI
     {
         CheckTimer = 1000;
 
-        if (m_pInstance)
-            ArchimondeGUID = m_pInstance->GetData64(DATA_ARCHIMONDE);
+        if (pInstance)
+            ArchimondeGUID = pInstance->GetData64(DATA_ARCHIMONDE);
 
         m_creature->SetFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_NON_ATTACKABLE);
     }
@@ -178,15 +178,34 @@ struct MANGOS_DLL_DECL mob_doomfire_targettingAI : public ScriptedAI
    For Doomfire, we summon a mob (Doomfire Spirit) for the Doomfire mob to follow. It's spirit will
    randomly select it's target to follow and then we create the random movement making it unpredictable. */
 
+// This is used to sort by distance in order to see who is the closest target, when checking for Finger of Death
+struct TargetDistanceOrder : public std::binary_function<const Unit, const Unit, bool>
+{
+    const Unit* MainTarget;
+    TargetDistanceOrder(const Unit* Target) : MainTarget(Target) {};
+    // functor for operator "<"
+    bool operator()(const Unit* _Left, const Unit* _Right) const
+    {
+        return (MainTarget->GetDistance(_Left) < MainTarget->GetDistance(_Right));
+    }
+};
+
 struct MANGOS_DLL_DECL boss_archimondeAI : public ScriptedAI
 {
     boss_archimondeAI(Creature* pCreature) : ScriptedAI(pCreature)
     {
-        m_pInstance = (ScriptedInstance*)pCreature->GetInstanceData();
+        pInstance = ((ScriptedInstance*)pCreature->GetInstanceData());
+        SpellEntry *TempSpell = (SpellEntry*)GetSpellStore()->LookupEntry(31944);
+        if(TempSpell)
+            TempSpell->EffectTriggerSpell[1] = 31969;
+/*        SpellEntry *TempSpell1 = (SpellEntry*)GetSpellStore()->LookupEntry(31969);
+        if(TempSpell1)
+            TempSpell1->EffectBasePoints[0] = 2250;*/
+            
         Reset();
     }
 
-    ScriptedInstance* m_pInstance;
+    ScriptedInstance* pInstance;
 
     uint64 DoomfireSpiritGUID;
     uint64 WorldTreeGUID;
@@ -212,8 +231,8 @@ struct MANGOS_DLL_DECL boss_archimondeAI : public ScriptedAI
 
     void Reset()
     {
-        if (m_pInstance)
-            m_pInstance->SetData(TYPE_ARCHIMONDE, NOT_STARTED);
+        if (pInstance)
+            pInstance->SetData(DATA_ARCHIMONDEEVENT, NOT_STARTED);
 
         DoomfireSpiritGUID = 0;
         WorldTreeGUID = 0;
@@ -221,9 +240,9 @@ struct MANGOS_DLL_DECL boss_archimondeAI : public ScriptedAI
         DrainNordrassilTimer = 0;
         FearTimer = 42000;
         AirBurstTimer = 30000;
-        GripOfTheLegionTimer = urand(5000, 25000);
+        GripOfTheLegionTimer = 5000 + rand()%20000;
         DoomfireTimer = 20000;
-        SoulChargeTimer = urand(2000, 29000);
+        SoulChargeTimer = 2000 + rand()%27000;
         SoulChargeCount = 0;
         MeleeRangeCheckTimer = 15000;
         HandOfDeathTimer = 2000;
@@ -237,20 +256,19 @@ struct MANGOS_DLL_DECL boss_archimondeAI : public ScriptedAI
         IsChanneling = false;
     }
 
-    void Aggro(Unit* pWho)
+    void Aggro(Unit *who)
     {
         m_creature->InterruptSpell(CURRENT_CHANNELED_SPELL);
         DoScriptText(SAY_AGGRO, m_creature);
-
         m_creature->SetInCombatWithZone();
 
-        if (m_pInstance)
-            m_pInstance->SetData(TYPE_ARCHIMONDE, IN_PROGRESS);
+        if (pInstance)
+            pInstance->SetData(DATA_ARCHIMONDEEVENT, IN_PROGRESS);
     }
 
     void KilledUnit(Unit *victim)
     {
-        switch(urand(0, 2))
+        switch(rand()%2)
         {
             case 0: DoScriptText(SAY_SLAY1, m_creature); break;
             case 1: DoScriptText(SAY_SLAY2, m_creature); break;
@@ -282,7 +300,7 @@ struct MANGOS_DLL_DECL boss_archimondeAI : public ScriptedAI
                 break;
         }
 
-        SoulChargeTimer = urand(2000, 30000);
+        SoulChargeTimer = 2000 + rand()%28000;
         ++SoulChargeCount;
     }
 
@@ -290,8 +308,8 @@ struct MANGOS_DLL_DECL boss_archimondeAI : public ScriptedAI
     {
         DoScriptText(SAY_DEATH, m_creature);
 
-        if (m_pInstance)
-            m_pInstance->SetData(TYPE_ARCHIMONDE, DONE);
+        if (pInstance)
+            pInstance->SetData(DATA_ARCHIMONDEEVENT, DONE);
     }
 
     bool CanUseFingerOfDeath()
@@ -317,7 +335,7 @@ struct MANGOS_DLL_DECL boss_archimondeAI : public ScriptedAI
         if (targets.empty())
             return false;
 
-        targets.sort(ObjectDistanceOrder(m_creature));
+        targets.sort(TargetDistanceOrder(m_creature));
         Unit* target = targets.front();
         if (target)
         {
@@ -379,7 +397,7 @@ struct MANGOS_DLL_DECL boss_archimondeAI : public ScriptedAI
         uint32 chargeSpell = 0;
         uint32 unleashSpell = 0;
 
-        switch(urand(0, 2))
+        switch(rand()%3)
         {
             case 0:
                 chargeSpell = SPELL_SOUL_CHARGE_RED;
@@ -400,26 +418,26 @@ struct MANGOS_DLL_DECL boss_archimondeAI : public ScriptedAI
             m_creature->RemoveSingleAuraFromStack(chargeSpell, 0);
             DoCast(m_creature->getVictim(), unleashSpell);
             HasCast = true;
-            --SoulChargeCount;
+            SoulChargeCount--;
         }
 
         if (HasCast)
-            SoulChargeTimer = urand(2000, 30000);
+            SoulChargeTimer = 2000 + rand()%28000;
     }
 
     void UpdateAI(const uint32 diff)
     {
         if (!m_creature->isInCombat())
         {
-            if (m_pInstance)
+            if (pInstance)
             {
                 // Do not let the raid skip straight to Archimonde. Visible and hostile ONLY if Azagalor is finished.
-                if ((m_pInstance->GetData(TYPE_AZGALOR) < DONE) && ((m_creature->GetVisibility() != VISIBILITY_OFF) || (m_creature->getFaction() != 35)))
+                if ((pInstance->GetData(DATA_AZGALOREVENT) < DONE) && ((m_creature->GetVisibility() != VISIBILITY_OFF) || (m_creature->getFaction() != 35)))
                 {
                     m_creature->SetVisibility(VISIBILITY_OFF);
                     m_creature->setFaction(35);
                 }
-                else if ((m_pInstance->GetData(TYPE_AZGALOR) >= DONE) && ((m_creature->GetVisibility() != VISIBILITY_ON) || (m_creature->getFaction() == 35)))
+                else if ((pInstance->GetData(DATA_AZGALOREVENT) >= DONE) && ((m_creature->GetVisibility() != VISIBILITY_ON) || (m_creature->getFaction() == 35)))
                 {
                     m_creature->setFaction(1720);
                     m_creature->SetVisibility(VISIBILITY_ON);
@@ -535,18 +553,18 @@ struct MANGOS_DLL_DECL boss_archimondeAI : public ScriptedAI
         if (GripOfTheLegionTimer < diff)
         {
             DoCast(SelectUnit(SELECT_TARGET_RANDOM, 0), SPELL_GRIP_OF_THE_LEGION);
-            GripOfTheLegionTimer = urand(5000, 25000);
+            GripOfTheLegionTimer = 5000 + rand()%20000;
         }else GripOfTheLegionTimer -= diff;
 
         if (AirBurstTimer < diff)
         {
-            if (!urand(0, 1))
+            if (rand()%2 == 0)
                 DoScriptText(SAY_AIR_BURST1, m_creature);
             else
                 DoScriptText(SAY_AIR_BURST2, m_creature);
 
             DoCast(SelectUnit(SELECT_TARGET_RANDOM, 0), SPELL_AIR_BURST);
-            AirBurstTimer = urand(25000, 40000);
+            AirBurstTimer = 25000 + rand()%15000;
         }else AirBurstTimer -= diff;
 
         if (FearTimer < diff)
@@ -557,7 +575,7 @@ struct MANGOS_DLL_DECL boss_archimondeAI : public ScriptedAI
 
         if (DoomfireTimer < diff)
         {
-            if (!urand(0, 1))
+            if (rand()%2 == 0)
                 DoScriptText(SAY_DOOMFIRE1, m_creature);
             else
                 DoScriptText(SAY_DOOMFIRE2, m_creature);

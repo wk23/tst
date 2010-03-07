@@ -53,7 +53,8 @@ enum
     POINT_ID                    = 1,
 
     QUEST_KINDNESS              = 10804,
-    NPC_EVENT_PINGER            = 22131
+    NPC_EVENT_PINGER            = 22131,
+    ROCKNAIL_FLAYER_CARCASS = 185155
 };
 
 struct MANGOS_DLL_DECL mob_mature_netherwing_drakeAI : public ScriptedAI
@@ -64,6 +65,7 @@ struct MANGOS_DLL_DECL mob_mature_netherwing_drakeAI : public ScriptedAI
 
     bool bCanEat;
     bool bIsEating;
+    bool bIsReach;
 
     uint32 EatTimer;
     uint32 CastTimer;
@@ -74,8 +76,9 @@ struct MANGOS_DLL_DECL mob_mature_netherwing_drakeAI : public ScriptedAI
 
         bCanEat = false;
         bIsEating = false;
+        bIsReach = false;
 
-        EatTimer = 5000;
+        EatTimer = 1000;
         CastTimer = 5000;
     }
 
@@ -98,8 +101,8 @@ struct MANGOS_DLL_DECL mob_mature_netherwing_drakeAI : public ScriptedAI
 
         if (id == POINT_ID)
         {
-            bIsEating = true;
-            EatTimer = 7000;
+            EatTimer = 1000;
+            bIsReach = true;
             m_creature->HandleEmoteCommand(EMOTE_ONESHOT_ATTACKUNARMED);
         }
     }
@@ -112,9 +115,23 @@ struct MANGOS_DLL_DECL mob_mature_netherwing_drakeAI : public ScriptedAI
             {
                 if (bCanEat && !bIsEating)
                 {
+
                     if (Unit* pUnit = Unit::GetUnit(*m_creature, uiPlayerGUID))
                     {
-                        if (GameObject* pGo = pUnit->GetGameObject(SPELL_PLACE_CARCASS))
+                        GameObject* pGo = NULL;
+
+                        CellPair p(MaNGOS::ComputeCellPair(pUnit->GetPositionX(), pUnit->GetPositionY()));
+                        Cell cell(p);
+                        cell.data.Part.reserved = ALL_DISTRICT;
+                        float range = pUnit->GetDistance(m_creature)+10;
+                        MaNGOS::NearestGameObjectEntryInObjectRangeCheck go_check(*pUnit, ROCKNAIL_FLAYER_CARCASS,range);
+                        MaNGOS::GameObjectLastSearcher<MaNGOS::NearestGameObjectEntryInObjectRangeCheck> checker(pGo,go_check);
+
+                        TypeContainerVisitor<MaNGOS::GameObjectLastSearcher<MaNGOS::NearestGameObjectEntryInObjectRangeCheck>, GridTypeMapContainer > object_checker(checker);
+                        CellLock<GridReadGuard> cell_lock(cell, p);
+                        cell_lock->Visit(cell_lock, object_checker, *pUnit->GetMap(), *pUnit, range);
+
+                        if (pGo)
                         {
                             if (m_creature->GetMotionMaster()->GetCurrentMovementGeneratorType() == WAYPOINT_MOTION_TYPE)
                                 m_creature->GetMotionMaster()->MovementExpired();
@@ -125,19 +142,23 @@ struct MANGOS_DLL_DECL mob_mature_netherwing_drakeAI : public ScriptedAI
                             m_creature->GetMotionMaster()->MovePoint(POINT_ID, pGo->GetPositionX(), pGo->GetPositionY(), pGo->GetPositionZ());
                         }
                     }
-                    bCanEat = false;
                 }
-                else if (bIsEating)
+                if (bIsReach)
                 {
+                    bCanEat = false;
+                    bIsEating = true;
                     DoCast(m_creature, SPELL_JUST_EATEN);
                     DoScriptText(SAY_JUST_EATEN, m_creature);
 
                     if (Player* pPlr = (Player*)Unit::GetUnit((*m_creature), uiPlayerGUID))
+                    {
                         pPlr->KilledMonsterCredit(NPC_EVENT_PINGER, m_creature->GetGUID());
+                    }
 
                     Reset();
                     m_creature->GetMotionMaster()->Clear();
                 }
+            EatTimer = 1000;
             }
             else
                 EatTimer -= diff;
@@ -145,7 +166,7 @@ struct MANGOS_DLL_DECL mob_mature_netherwing_drakeAI : public ScriptedAI
             return;
         }
 
-        if (!m_creature->SelectHostileTarget() || !m_creature->getVictim())
+        if (!m_creature->SelectHostileTarget() || !m_creature->getVictim() || m_creature->HasAura(SPELL_JUST_EATEN))
             return;
 
         if (CastTimer < diff)
