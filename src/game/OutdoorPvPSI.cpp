@@ -192,10 +192,12 @@ bool OutdoorPvPSI::HandleDropFlag(Player *plr, uint32 spellId)
             case ALLIANCE:
                 {
                     AreaTriggerEntry const* atEntry = sAreaTriggerStore.LookupEntry(SI_AREATRIGGER_A);
+                    AreaTriggerEntry const* atEntry1 = sAreaTriggerStore.LookupEntry(SI_AREATRIGGER_H);
                     if(atEntry)
                     {
                         // 5.0f is safe-distance
-                        if(plr->GetDistance(atEntry->x,atEntry->y,atEntry->z) > 15.0f + atEntry->radius)
+                        if((plr->GetDistance(atEntry->x,atEntry->y,atEntry->z) > 45.0f + atEntry->radius)  &&
+                        (plr->GetDistance(atEntry1->x,atEntry1->y,atEntry1->z) > 45.0f + atEntry1->radius))
                         {
                             // he dropped it further, summon mound
                             plr->CastSpell(plr,SI_SILITHYST_DROP_FLAG,true);
@@ -220,11 +222,13 @@ bool OutdoorPvPSI::HandleDropFlag(Player *plr, uint32 spellId)
                 break;
             case HORDE:
                 {
-                    AreaTriggerEntry const* atEntry = sAreaTriggerStore.LookupEntry(SI_AREATRIGGER_H);
+                    AreaTriggerEntry const* atEntry = sAreaTriggerStore.LookupEntry(SI_AREATRIGGER_A);
+                    AreaTriggerEntry const* atEntry1 = sAreaTriggerStore.LookupEntry(SI_AREATRIGGER_H);
                     if(atEntry)
                     {
                         // 5.0f is safe-distance
-                        if(plr->GetDistance(atEntry->x,atEntry->y,atEntry->z) > 15.0f + atEntry->radius)
+                        if((plr->GetDistance(atEntry->x,atEntry->y,atEntry->z) > 45.0f + atEntry->radius)  &&
+                        (plr->GetDistance(atEntry1->x,atEntry1->y,atEntry1->z) > 45.0f + atEntry1->radius))
                         {
                             // he dropped it further, summon mound
                             plr->CastSpell(plr,SI_SILITHYST_DROP_FLAG,true);
