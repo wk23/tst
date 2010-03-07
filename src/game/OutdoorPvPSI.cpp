@@ -195,9 +195,11 @@ bool OutdoorPvPSI::HandleDropFlag(Player *plr, uint32 spellId)
                     if(atEntry)
                     {
                         // 5.0f is safe-distance
-                        if(plr->GetDistance(atEntry->x,atEntry->y,atEntry->z) > 5.0f + atEntry->radius)
+                        if(plr->GetDistance(atEntry->x,atEntry->y,atEntry->z) > 15.0f + atEntry->radius)
                         {
                             // he dropped it further, summon mound
+                            plr->CastSpell(plr,SI_SILITHYST_DROP_FLAG,true);
+/*
                             GameObject * go = new GameObject;
                             Map * map = MapManager::Instance().GetMap(plr->GetMapId(), plr);
                             if(!map)
@@ -211,6 +213,7 @@ bool OutdoorPvPSI::HandleDropFlag(Player *plr, uint32 spellId)
                                 go->SetRespawnTime(0);
                                 map->Add(go);
                             }
+*/
                         }
                     }
                 }
@@ -221,9 +224,11 @@ bool OutdoorPvPSI::HandleDropFlag(Player *plr, uint32 spellId)
                     if(atEntry)
                     {
                         // 5.0f is safe-distance
-                        if(plr->GetDistance(atEntry->x,atEntry->y,atEntry->z) > 5.0f + atEntry->radius)
+                        if(plr->GetDistance(atEntry->x,atEntry->y,atEntry->z) > 15.0f + atEntry->radius)
                         {
                             // he dropped it further, summon mound
+                            plr->CastSpell(plr,SI_SILITHYST_DROP_FLAG,true);
+/*
                             GameObject * go = new GameObject;
                             Map * map = MapManager::Instance().GetMap(plr->GetMapId(), plr);
                             if(!map)
@@ -237,6 +242,7 @@ bool OutdoorPvPSI::HandleDropFlag(Player *plr, uint32 spellId)
                                 go->SetRespawnTime(0);
                                 map->Add(go);
                             }
+*/
                         }
                     }
                 }
