@@ -518,7 +518,7 @@ void Spell::FillTargetMap()
                         // Note: this hack with search required until GO casting not implemented
                         // environment damage spells already have around enemies targeting but this not help in case not existed GO casting support
                         // currently each enemy selected explicitly and self cast damage
-                        if (m_spellInfo->Effect[i] == SPELL_EFFECT_ENVIRONMENTAL_DAMAGE)
+                        if (m_spellInfo->Effect[i] == SPELL_EFFECT_ENVIRONMENTAL_DAMAGE || m_spellInfo->Id == 45246)
                         {
                             if(m_targets.getUnitTarget())
                                 tmpUnitMap.push_back(m_targets.getUnitTarget());

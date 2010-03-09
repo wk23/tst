@@ -171,16 +171,16 @@ struct MANGOS_DLL_DECL boss_sacrolashAI : public ScriptedAI
         if (!done_by)
             return;
 
-        if (m_creature->GetDistance2d(spawn_x, spawn_y)>60.0)
-            return;
+        if (m_creature->GetDistance2d(spawn_x, spawn_y)>80.0)
+            damage=0;
 
         if (done_by->GetTypeId() != TYPEID_PLAYER) 
         {
             Unit* owner = done_by->GetCharmerOrOwner();
             if (!owner)
-               return;
+               damage=0;
             else if (owner->GetTypeId() != TYPEID_PLAYER)
-               return;
+               damage=0;
         }
     }
 
@@ -373,7 +373,7 @@ struct MANGOS_DLL_DECL boss_sacrolashAI : public ScriptedAI
             m_creature->InterruptSpell(CURRENT_GENERIC_SPELL);
             m_creature->Yell(YELL_ENRAGE ,LANG_UNIVERSAL,NULL);
             DoCast(m_creature,SPELL_ENRAGE);
-            enrage_timer = 360000;
+            enrage_timer = 300000;
         }else enrage_timer -= diff;
 
         if( m_creature->isAttackReady() && !m_creature->IsNonMeleeSpellCasted(false))
@@ -466,16 +466,16 @@ struct MANGOS_DLL_DECL boss_alythessAI : public Scripted_NoMovementAI
         if (!done_by)
             return;
 
-        if (m_creature->GetDistance2d(spawn_x, spawn_y)>60.0)
-            return;
+        if (m_creature->GetDistance2d(spawn_x, spawn_y)>80.0)
+            damage=0;
 
         if (done_by->GetTypeId() != TYPEID_PLAYER) 
         {
             Unit* owner = done_by->GetCharmerOrOwner();
             if (!owner)
-               return;
+               damage=0;
             else if (owner->GetTypeId() != TYPEID_PLAYER)
-               return;
+               damage=0;
         }
     }
 
@@ -540,9 +540,6 @@ InCombat = true;
     {
         switch(spell->Id)
         {
-
-        case SPELL_BLAZE: 
-            target->CastSpell(target,SPELL_BLAZE_SUMMON,true);
         case SPELL_CONFLAGRATION:
         case SPELL_FLAME_SEAR: 
             HandleTouchedSpells(target, SPELL_FLAME_TOUCHED);
@@ -728,7 +725,7 @@ InCombat = true;
             DoPlaySoundToSet(m_creature,SOUND_BERSERK);
             m_creature->Yell(YELL_BERSERK ,LANG_UNIVERSAL,NULL);
             DoCast(m_creature,SPELL_ENRAGE);
-            enrage_timer = 360000;
+            enrage_timer = 300000;
         }else enrage_timer -= diff;
     }
 };

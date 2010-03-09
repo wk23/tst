@@ -4375,6 +4375,9 @@ void Spell::EffectSummonObjectWild(uint32 i)
 
     // Wild object not have owner and check clickable by players
     map->Add(pGameObj);
+    WorldPacket data(SMSG_GAMEOBJECT_SPAWN_ANIM_OBSOLETE, 8);
+    data << uint64(pGameObj->GetGUID());
+    m_caster->SendMessageToSet(&data,true);
 
     if(pGameObj->GetGoType() == GAMEOBJECT_TYPE_FLAGDROP && m_caster->GetTypeId() == TYPEID_PLAYER)
     {
@@ -4435,6 +4438,16 @@ void Spell::EffectScriptEffect(uint32 effIndex)
     // by spell id
     switch(m_spellInfo->Id)
     {
+        // Blaze
+        case 45235:
+        {
+            if(!unitTarget)
+                return;
+
+            uint32 spell_id = 45236;
+            unitTarget->CastSpell(unitTarget,spell_id,true,NULL);
+            return;
+        }
         // PX-238 Winter Wondervolt TRAP
         case 26275:
         {

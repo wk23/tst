@@ -4715,6 +4715,7 @@ bool Unit::HandleDummyAuraProc(Unit *pVictim, uint32 damage, Aura* triggeredByAu
                        RemoveAurasDueToSpell(45348);
                     return true;
                 }
+                case 45246:
                 case 45342:
                 case 46771:
                 {
