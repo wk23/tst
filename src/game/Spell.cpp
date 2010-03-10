@@ -1623,7 +1623,7 @@ void Spell::SetTargetMap(uint32 effIndex,uint32 targetMode,UnitList& TagUnitMap)
         {
             // Check original caster is GO - set its coordinates as dst cast
             WorldObject *caster = NULL;
-            if (IS_GAMEOBJECT_GUID(m_originalCasterGUID))
+            if (IS_GAMEOBJECT_GUID(m_originalCasterGUID) && m_caster->IsInWorld())
                 caster = m_caster->GetMap()->GetGameObject(m_originalCasterGUID);
             if (!caster)
                 caster = m_caster;
