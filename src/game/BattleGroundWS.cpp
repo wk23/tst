@@ -46,19 +46,6 @@ void BattleGroundWS::Update(uint32 diff)
     {
         ModifyStartDelayTime(diff);
 
-        for(BattleGroundPlayerMap::const_iterator itr = GetPlayers().begin(); itr != GetPlayers().end(); ++itr)
-            if (Player* plr = sObjectMgr.GetPlayer(itr->first))
-            if (!plr->isGameMaster())
-            if (plr->GetBattleGroundEntryPoint().mapid != GetMapId() && !(fabs(plr->GetBattleGroundEntryPoint().coord_x - plr->m_movementInfo.x)<200) && 
-            ((plr->m_movementInfo.x>600) || (plr->m_movementInfo.x<1900)) && 
-            ((plr->m_movementInfo.x != plr->GetBattleGroundEntryPoint().coord_x && plr->GetTeam() == ALLIANCE && plr->m_movementInfo.x<1400.0f) || (plr->m_movementInfo.x != plr->GetBattleGroundEntryPoint().coord_x && plr->GetTeam() == HORDE && plr->m_movementInfo.x>1100.0f)))
-            {
-                sLog.outBan("Player %s (GUID: %u) banned on WS - exit before opening of doors x:[%f] y:[%f] z:[%f] m[%u] e_x:[%f] e_y:[%f] e_z:[%f] e_m[%u]",plr->GetName(),plr->GetGUIDLow(),plr->m_movementInfo.x,plr->m_movementInfo.y,plr->m_movementInfo.z,plr->GetMapId(),plr->GetBattleGroundEntryPoint().coord_x,plr->GetBattleGroundEntryPoint().coord_y,plr->GetBattleGroundEntryPoint().coord_z,plr->GetBattleGroundEntryPoint().mapid);
-                std::string reason = "WS - exit before opening of doors by character ";
-                reason.append(plr->GetName());
-                sWorld.BanAccount(BAN_CHARACTER, plr->GetName(), "-1", reason,"WSG_autoban");
-            }
-
         if (!(m_Events & 0x01))
         {
             m_Events |= 0x01;
@@ -83,6 +70,20 @@ void BattleGroundWS::Update(uint32 diff)
         {
             m_Events |= 0x08;
             SendMessageToAll(GetMangosString(LANG_BG_WS_HALF_MINUTE));
+
+        for(BattleGroundPlayerMap::const_iterator itr = GetPlayers().begin(); itr != GetPlayers().end(); ++itr)
+            if (Player* plr = sObjectMgr.GetPlayer(itr->first))
+            if (!plr->isGameMaster())
+            if (plr->GetBattleGroundEntryPoint().mapid != GetMapId() && !(fabs(plr->GetBattleGroundEntryPoint().coord_x - plr->m_movementInfo.x)<200) && 
+            ((plr->m_movementInfo.x>600) && (plr->m_movementInfo.x<1900)) && 
+            ((plr->m_movementInfo.x != plr->GetBattleGroundEntryPoint().coord_x && plr->GetTeam() == ALLIANCE && plr->m_movementInfo.x<1400.0f) || (plr->m_movementInfo.x != plr->GetBattleGroundEntryPoint().coord_x && plr->GetTeam() == HORDE && plr->m_movementInfo.x>1100.0f)))
+            {
+                sLog.outBan("Player %s (GUID: %u) banned on WS - exit before opening of doors x:[%f] y:[%f] z:[%f] m[%u] e_x:[%f] e_y:[%f] e_z:[%f] e_m[%u]",plr->GetName(),plr->GetGUIDLow(),plr->m_movementInfo.x,plr->m_movementInfo.y,plr->m_movementInfo.z,plr->GetMapId(),plr->GetBattleGroundEntryPoint().coord_x,plr->GetBattleGroundEntryPoint().coord_y,plr->GetBattleGroundEntryPoint().coord_z,plr->GetBattleGroundEntryPoint().mapid);
+                std::string reason = "WS - exit before opening of doors by character ";
+                reason.append(plr->GetName());
+                sWorld.BanAccount(BAN_CHARACTER, plr->GetName(), "-1", reason,"WSG_autoban");
+            }
+
         }
         // After 2 minutes, gates OPEN ! x)
         else if (GetStartDelayTime() < 0 && !(m_Events & 0x10))

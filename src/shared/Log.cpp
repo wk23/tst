@@ -476,19 +476,6 @@ void Log::outErrorDb( const char * err, ... )
         fprintf(dberLogfile, "\n" );
         fflush(dberLogfile);
     }
-
-    if(banLogfile)
-    {
-        outTimestamp(banLogfile);
-
-        va_list ap;
-        va_start(ap, err);
-        vfprintf(banLogfile, err, ap);
-        va_end(ap);
-
-        fprintf(banLogfile, "\n" );
-        fflush(banLogfile);
-    }
     fflush(stderr);
 }
 
