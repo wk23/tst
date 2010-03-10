@@ -77,6 +77,10 @@ class Log : public MaNGOS::Singleton<Log, MaNGOS::ClassLevelLockable<Log, ACE_Th
             fclose(dberLogfile);
         dberLogfile = NULL;
 
+        if( banLogfile != NULL )
+            fclose(banLogfile);
+        banLogfile = NULL;
+
         if (raLogfile != NULL)
             fclose(raLogfile);
         raLogfile = NULL;
@@ -108,6 +112,8 @@ class Log : public MaNGOS::Singleton<Log, MaNGOS::ClassLevelLockable<Log, ACE_Th
                                                             // any log level
         void outErrorDb( const char * str, ... )     ATTR_PRINTF(2,3);
                                                             // any log level
+        void outBan( const char * str, ... )     ATTR_PRINTF(2,3);
+                                                            // any log level
         void outChar( const char * str, ... )        ATTR_PRINTF(2,3);
                                                             // any log level
         void outWorldPacketDump( uint32 socket, uint32 opcode, char const* opcodeName, ByteBuffer const* packet, bool incoming );
@@ -134,6 +140,7 @@ class Log : public MaNGOS::Singleton<Log, MaNGOS::ClassLevelLockable<Log, ACE_Th
         FILE* gmLogfile;
         FILE* charLogfile;
         FILE* dberLogfile;
+        FILE* banLogfile;
         FILE* worldLogfile;
 
         // log/console control

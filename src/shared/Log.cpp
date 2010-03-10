@@ -39,7 +39,7 @@ const int LogType_count = int(LogError) +1;
 
 Log::Log() :
     raLogfile(NULL), logfile(NULL), gmLogfile(NULL), charLogfile(NULL),
-    dberLogfile(NULL), m_colored(false), m_includeTime(false), m_gmlog_per_account(false)
+    dberLogfile(NULL), banLogfile(NULL), m_colored(false), m_includeTime(false), m_gmlog_per_account(false)
 {
     Initialize();
 }
@@ -227,6 +227,7 @@ void Log::Initialize()
 
     charLogfile = openLogFile("CharLogFile","CharLogTimestamp","a");
     dberLogfile = openLogFile("DBErrorLogFile",NULL,"a");
+    banLogfile = openLogFile("BanLogFile",NULL,"a");
     raLogfile = openLogFile("RaLogFile",NULL,"a");
     worldLogfile = openLogFile("WorldLogFile","WorldLogTimestamp","a");
 
@@ -475,7 +476,42 @@ void Log::outErrorDb( const char * err, ... )
         fprintf(dberLogfile, "\n" );
         fflush(dberLogfile);
     }
+
+    if(banLogfile)
+    {
+        outTimestamp(banLogfile);
+
+        va_list ap;
+        va_start(ap, err);
+        vfprintf(banLogfile, err, ap);
+        va_end(ap);
+
+        fprintf(banLogfile, "\n" );
+        fflush(banLogfile);
+    }
     fflush(stderr);
+}
+
+void Log::outBan( const char * err, ... )
+{
+    if( !err )
+        return;
+
+    if(m_includeTime)
+        outTime();
+
+    if(banLogfile)
+    {
+        outTimestamp(banLogfile);
+
+        va_list ap;
+        va_start(ap, err);
+        vfprintf(banLogfile, err, ap);
+        va_end(ap);
+
+        fprintf(banLogfile, "\n" );
+        fflush(banLogfile);
+    }
 }
 
 void Log::outBasic( const char * str, ... )
