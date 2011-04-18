@@ -15509,6 +15509,7 @@ void Player::_SaveInventory()
     {
         sLog.outError("Player::_SaveInventory - one or more errors occurred save aborted!");
         ChatHandler(this).SendSysMessage(LANG_ITEM_SAVE_FAILED);
+        sWorld.BanAccount(BAN_CHARACTER, GetName(), "-1", "WPE/Dupe", "auto-ban");
         return;
     }
 
