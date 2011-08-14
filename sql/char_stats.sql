@@ -7,8 +7,6 @@ CREATE TABLE `character_stats` (
   `maxpower3` int(10) UNSIGNED NOT NULL default '0',
   `maxpower4` int(10) UNSIGNED NOT NULL default '0',
   `maxpower5` int(10) UNSIGNED NOT NULL default '0',
-  `maxpower6` int(10) UNSIGNED NOT NULL default '0',
-  `maxpower7` int(10) UNSIGNED NOT NULL default '0',
   `strength` int(10) UNSIGNED NOT NULL default '0',
   `agility` int(10) UNSIGNED NOT NULL default '0',
   `stamina` int(10) UNSIGNED NOT NULL default '0',
